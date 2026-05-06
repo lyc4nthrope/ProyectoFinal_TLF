@@ -1,0 +1,31 @@
+schema: spec-driven
+
+context: |
+  Current state: empty repository with Git and minimal README.
+  Planned stack: Python 3.x with Tkinter for interactive validation UI.
+  Domain: pattern recognition and validation using formal language theory.
+  Testing: manual cases first, then unit tests for validators and automata.
+  Style: educational code, explicit algorithms, comments that justify each transition and rule.
+
+rules:
+  proposal:
+    - Include branch strategy and teammate ownership
+    - Identify modules that must remain explainable in class
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include automata-oriented decomposition
+    - Document why each algorithm avoids opaque regex processing
+  tasks:
+    - Group tasks by foundation, automata, UI, testing, documentation
+    - Use hierarchical numbering (1.1, 1.2, etc.)
+    - Keep tasks small enough to complete in one session
+  apply:
+    - Prefer explicit state machines and handwritten validators
+    - Add comments that support oral explanation
+  verify:
+    - Run tests if available
+    - Compare implementation against every spec scenario
+  archive:
+    - Warn before removing educational comments or traceability docs
