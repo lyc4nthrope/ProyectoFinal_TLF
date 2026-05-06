@@ -1,0 +1,2 @@
+"""Nucleo formal del proyecto."""
+
