@@ -107,3 +107,63 @@ La ultima etiqueta debe terminar con al menos `2` letras.
 - `usuario.example.com`
 - `usuario@.com`
 - `usuario@example.c1`
+
+## Fecha
+
+### Alfabeto permitido
+
+- Digitos: `0-9`
+- Separador unico: `/`
+
+### Regla estructural
+
+La fecha debe tener exactamente el formato `DD/MM/YYYY`.
+Eso significa:
+
+- `DD`: dia con exactamente 2 digitos
+- `MM`: mes con exactamente 2 digitos
+- `YYYY`: anio con exactamente 4 digitos
+
+No se aceptan:
+
+- otros separadores
+- espacios
+- bloques incompletos
+- simbolos extra al final
+
+### Restricciones de rango
+
+- El mes debe estar entre `01` y `12`.
+- El anio debe estar entre `1900` y `2100`.
+- El dia debe respetar el maximo real de su mes.
+- Febrero usa validacion basica de anio bisiesto.
+
+### Idea de estados
+
+- `START`: inicio del analisis
+- `DAY_FIRST`: primer digito del dia
+- `AFTER_DAY`: dia completo, se espera `/`
+- `MONTH_FIRST`: primer digito del mes
+- `MONTH_SECOND`: segundo digito del mes
+- `AFTER_MONTH`: mes completo, se espera `/`
+- `YEAR_1`: primer digito del anio
+- `YEAR_2`: segundo digito del anio
+- `YEAR_3`: tercer digito del anio
+- `YEAR_4`: cuarto digito del anio
+- `DATE_COMPLETE`: estructura completa
+- `ACCEPT`: fecha valida
+- `REJECT`: la fecha viola una regla formal
+
+### Ejemplos validos
+
+- `15/08/2024`
+- `01/01/2000`
+- `29/02/2024`
+
+### Ejemplos invalidos
+
+- `1/08/2024`
+- `15-08-2024`
+- `31/04/2024`
+- `29/02/2023`
+- `15/13/2024`
