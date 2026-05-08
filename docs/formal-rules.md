@@ -224,6 +224,120 @@ No se permiten:
 - `ABC123X9` — caracter extra al final
 - `ABC.123` — simbolo no permitido
 
+## URL
+
+### Alfabeto permitido
+
+- Letras ASCII: `a-z`, `A-Z`
+- Digitos: `0-9`
+- Delimitadores de protocolo: `:`, `/`
+- Separadores de dominio: `.`, `-`
+- Caracteres de ruta y query: `_`, `?`, `=`, `&`, `#`, `~`, `%`, `+`, `@`
+
+### Regla estructural
+
+La URL debe comenzar con el protocolo `http` o `https` (mayusculas o minusculas).
+Despues del protocolo debe aparecer exactamente `://`.
+El dominio sigue inmediatamente y debe contener al menos un punto para separar
+el nombre del TLD. El dominio no puede:
+
+- empezar con punto
+- terminar en guion
+- tener etiquetas vacias (dos puntos consecutivos)
+
+La ruta es opcional. Si aparece, puede contener letras, digitos y los caracteres
+URL validos (`/`, `-`, `_`, `.`, `?`, `=`, `&`, `#`, `~`, `%`, `+`).
+
+### Restricciones de cierre
+
+- El dominio debe haber visto al menos un punto (`saw_domain_dot = True`).
+- El automata debe terminar en estado `DOMAIN` (URL sin ruta) o `PATH` (con ruta).
+
+### Idea de estados
+
+- `START`: inicio del analisis
+- `PROTO_H` → `PROTO_HT` → `PROTO_HTT` → `PROTO_HTTP`: reconocen el prefijo `http`
+- `PROTO_HTTPS`: reconoce la extension `s` del protocolo seguro
+- `COLON`: se leyo `:` tras el protocolo
+- `SLASH1`, `SLASH2`: se leen los dos slashes del separador `://`
+- `DOMAIN`: lectura normal del dominio
+- `DOMAIN_HYPHEN`: se leyo guion interno — la etiqueta debe continuar
+- `DOMAIN_DOT`: se leyo punto — debe iniciar una nueva etiqueta
+- `PATH`: lectura de la ruta, query y fragmento
+- `REJECT`: cadena invalida
+
+### Ejemplos validos
+
+- `http://example.com`
+- `https://www.google.com`
+- `https://example.com/path?q=hola&lang=es`
+- `http://a.bc`
+
+### Ejemplos invalidos
+
+- `ftp://example.com` — protocolo no permitido
+- `http://example` — dominio sin punto
+- `http:/example.com` — falta un slash
+- `http://example-.com` — dominio termina en guion
+
+---
+
+## NIT (Numero de Identificacion Tributaria)
+
+### Alfabeto permitido
+
+- Digitos: `0-9`
+- Separadores de grupo: `.`
+- Separador de verificador: `-`
+
+### Regla estructural
+
+El NIT tiene formato fijo `NNN.NNN.NNN-D`:
+
+- Tres grupos de exactamente tres digitos cada uno.
+- Cada par de grupos separados por un punto `.`.
+- Un guion `-` separa el tercer grupo del digito verificador.
+- El digito verificador es exactamente un digito.
+- La cadena tiene longitud fija de 13 caracteres.
+
+No se aceptan:
+
+- grupos con menos o mas de 3 digitos
+- separadores distintos a `.` entre grupos o a `-` antes del verificador
+- caracteres extra al final
+- letras en cualquier posicion
+
+### Restriccion de cierre
+
+El automata debe terminar en el estado `CHECK` (digito verificador completo).
+Cualquier otro estado al agotar la entrada produce rechazo.
+
+### Idea de estados
+
+- `START`: inicio del analisis
+- `D1`, `D2`, `D3`: digitos del primer grupo
+- `DOT1`: primer separador `.`
+- `D4`, `D5`, `D6`: digitos del segundo grupo
+- `DOT2`: segundo separador `.`
+- `D7`, `D8`, `D9`: digitos del tercer grupo
+- `HYPHEN`: separador `-` antes del verificador
+- `CHECK`: digito verificador leido — estado aceptante al cierre
+- `REJECT`: cadena invalida
+
+### Ejemplos validos
+
+- `900.123.456-7`
+- `000.000.000-0`
+- `999.999.999-9`
+
+### Ejemplos invalidos
+
+- `900123456-7` — sin puntos separadores
+- `900.123.4567` — sin guion antes del verificador
+- `9AB.123.456-7` — letras en el primer grupo
+
+---
+
 ## Contrasena segura
 
 ### Alfabeto permitido
