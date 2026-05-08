@@ -223,3 +223,58 @@ No se permiten:
 - `ABC12` — solo dos digitos
 - `ABC123X9` — caracter extra al final
 - `ABC.123` — simbolo no permitido
+
+## Contrasena segura
+
+### Alfabeto permitido
+
+- Letras minusculas: `a-z`
+- Letras mayusculas: `A-Z`
+- Digitos: `0-9`
+- Simbolos especiales exactos: `! @ # $ % & * - _`
+
+### Regla estructural
+
+La contrasena se valida en un unico recorrido caracter por caracter.
+El automata mantiene cuatro banderas booleanas que se activan a medida que aparecen los simbolos requeridos:
+
+- `has_upper`: se activa al encontrar la primera letra mayuscula.
+- `has_lower`: se activa al encontrar la primera letra minuscula.
+- `has_digit`: se activa al encontrar el primer digito.
+- `has_special`: se activa al encontrar el primer simbolo del conjunto permitido.
+
+La contrasena se acepta al agotar la entrada si se cumplen todas estas condiciones:
+
+1. Longitud minima de 8 caracteres.
+2. `has_upper = true`
+3. `has_lower = true`
+4. `has_digit = true`
+5. `has_special = true`
+
+Si cualquier caracter no pertenece al alfabeto permitido, se rechaza de inmediato.
+
+### Nota importante
+
+La contrasena NO se busca en texto libre. Es un dato de entrada atomico validado unicamente en formularios interactivos (Parte B del proyecto).
+
+### Idea de estados
+
+- `START`: inicio del recorrido
+- `SCANNING`: estado unico de recorrido, aumentado con las cuatro banderas y un contador de longitud
+- `ACCEPT`: todas las condiciones se cumplen al agotar la entrada
+- `REJECT`: alguna condicion falla o aparece un caracter fuera del alfabeto
+
+### Ejemplos validos
+
+- `Secure@1` — 8 caracteres, cumple las cuatro condiciones
+- `MyP@ssw0rd!` — larga, todas las banderas activas
+- `Abcde@1z` — exactamente 8 caracteres en el limite inferior
+
+### Ejemplos invalidos
+
+- `Ab1@` — solo 4 caracteres, longitud insuficiente
+- `secure@1abc` — sin letra mayuscula
+- `SECURE@1ABC` — sin letra minuscula
+- `SecurePass@` — sin digito
+- `SecurePass1` — sin simbolo especial
+- `Secure^1ab` — `^` no pertenece al conjunto de simbolos permitidos
