@@ -10,17 +10,21 @@ import sys
 
 from src.patterns.date_validator import validate_date
 from src.patterns.email_validator import validate_email
+from src.patterns.nit_validator import validate_nit
 from src.patterns.password_validator import validate_password
 from src.patterns.phone_validator import validate_phone
 from src.patterns.plate_validator import validate_plate
 from src.patterns.text_scanner import scan_text
+from src.patterns.url_validator import validate_url
 
 VALIDATORS = {
     "date": validate_date,
     "email": validate_email,
+    "nit": validate_nit,
     "phone": validate_phone,
     "plate": validate_plate,
     "password": validate_password,
+    "url": validate_url,
 }
 
 
