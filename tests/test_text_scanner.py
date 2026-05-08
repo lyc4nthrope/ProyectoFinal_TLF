@@ -112,6 +112,51 @@ class TextScannerTests(unittest.TestCase):
         self.assertEqual(matches[0].pattern, "plate")
         self.assertEqual(matches[0].normalized, "ABC123")
 
+    def test_finds_url_in_text(self) -> None:
+        matches = scan_text("Visita https://example.com para mas info.")
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].pattern, "url")
+        self.assertEqual(matches[0].raw, "https://example.com")
+
+    def test_finds_url_with_path_in_text(self) -> None:
+        matches = scan_text("Descarga en http://example.com/archivo.pdf hoy.")
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].pattern, "url")
+        self.assertEqual(matches[0].normalized, "http://example.com/archivo.pdf")
+
+    def test_finds_nit_in_text(self) -> None:
+        matches = scan_text("La empresa con NIT 900.123.456-7 esta registrada.")
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].pattern, "nit")
+        self.assertEqual(matches[0].raw, "900.123.456-7")
+
+    def test_nit_normalized_only_digits(self) -> None:
+        matches = scan_text("NIT: 800.100.200-5.")
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].normalized, "8001002005")
+
+    def test_invalid_url_not_reported(self) -> None:
+        matches = scan_text("El protocolo ftp://example.com no es valido aqui.")
+
+        self.assertEqual(matches, [])
+
+    def test_invalid_nit_not_reported(self) -> None:
+        matches = scan_text("El codigo 900123456 no tiene formato NIT.")
+
+        self.assertNotIn("nit", [m.pattern for m in matches])
+
+    def test_finds_url_and_email_together(self) -> None:
+        text = "Web: https://example.com correo: admin@example.com"
+        matches = scan_text(text)
+
+        patterns = [m.pattern for m in matches]
+        self.assertIn("url", patterns)
+        self.assertIn("email", patterns)
+
     def test_password_not_found_in_scanner(self) -> None:
         matches = scan_text("La clave es Secure@1 segun el sistema.")
 
