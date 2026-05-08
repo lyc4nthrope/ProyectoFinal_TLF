@@ -1,4 +1,9 @@
-"""Base para automatas y recorridos de caracteres."""
+"""AFD base — registra transiciones y traza; no decide aceptacion.
+
+Responsabilidad unica: mantener estado, contador de consumidos y lista
+de transiciones. Cada validador instancia TraceableAutomaton y es el
+unico responsable de las reglas de aceptacion o rechazo.
+"""
 
 from dataclasses import dataclass, field
 
