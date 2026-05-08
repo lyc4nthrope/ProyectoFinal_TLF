@@ -90,6 +90,44 @@ class TextScannerTests(unittest.TestCase):
         self.assertEqual(matches[0].pattern, "phone")
         self.assertEqual(matches[1].pattern, "email")
 
+    def test_finds_car_plate_in_text(self) -> None:
+        matches = scan_text("El carro ABC123 fue reportado.")
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].pattern, "plate")
+        self.assertEqual(matches[0].raw, "ABC123")
+        self.assertEqual(matches[0].normalized, "ABC123")
+
+    def test_finds_moto_plate_in_text(self) -> None:
+        matches = scan_text("Moto XYZ456A circulaba por la via.")
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].pattern, "plate")
+        self.assertEqual(matches[0].normalized, "XYZ456A")
+
+    def test_finds_plate_with_hyphen_in_text(self) -> None:
+        matches = scan_text("Placa ABC-123 registrada.")
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].pattern, "plate")
+        self.assertEqual(matches[0].normalized, "ABC123")
+
+    def test_password_not_found_in_scanner(self) -> None:
+        matches = scan_text("La clave es Secure@1 segun el sistema.")
+
+        patterns = [m.pattern for m in matches]
+        self.assertNotIn("password", patterns)
+
+    def test_finds_plate_email_and_phone_together(self) -> None:
+        text = "Placa ABC123 correo user@example.com telefono 3001234567."
+        matches = scan_text(text)
+
+        patterns = [m.pattern for m in matches]
+        self.assertIn("plate", patterns)
+        self.assertIn("email", patterns)
+        self.assertIn("phone", patterns)
+        self.assertEqual(len(matches), 3)
+
 
 if __name__ == "__main__":
     unittest.main()
