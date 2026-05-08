@@ -1,4 +1,8 @@
-"""Estructuras de resultado para validaciones y escaneos."""
+"""Tipo uniforme de resultado para todos los validadores del proyecto.
+
+Responsabilidad unica: exponer ValidationResult con factory methods
+accept() y reject(). Ningun validador construye el resultado manualmente.
+"""
 
 from dataclasses import dataclass, field
 

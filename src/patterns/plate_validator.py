@@ -1,14 +1,12 @@
-"""Validador manual para placas vehiculares colombianas."""
+"""AFD para placas vehiculares colombianas.
+
+Responsabilidad unica: recorrer char-by-char y decidir si la cadena es
+placa de carro (LLLDDD) o moto (LLLDDDL). Sin logica de UI ni de scanner.
+"""
 
 from src.core.automaton import TraceableAutomaton
 from src.core.result import ValidationResult
-from src.core.symbol_classifier import is_digit, is_letter
-
-
-def _is_upper(symbol: str) -> bool:
-    """Indica si el simbolo es una letra mayuscula del rango A-Z."""
-
-    return is_letter(symbol) and symbol == symbol.upper()
+from src.core.symbol_classifier import is_digit, is_upper_letter
 
 
 def _is_hyphen(symbol: str) -> bool:
@@ -66,7 +64,7 @@ def validate_plate(text: str) -> ValidationResult:
 
     for symbol in text:
         if automaton.state == "START":
-            if _is_upper(symbol):
+            if is_upper_letter(symbol):
                 automaton.record(symbol, "L1", "Primera letra de la placa.")
                 normalized.append(symbol)
                 continue
@@ -74,7 +72,7 @@ def validate_plate(text: str) -> ValidationResult:
             return _rejected_plate_result(automaton, "La placa no inicia con letra mayuscula.")
 
         if automaton.state == "L1":
-            if _is_upper(symbol):
+            if is_upper_letter(symbol):
                 automaton.record(symbol, "L2", "Segunda letra de la placa.")
                 normalized.append(symbol)
                 continue
@@ -82,7 +80,7 @@ def validate_plate(text: str) -> ValidationResult:
             return _rejected_plate_result(automaton, "La placa tiene menos de tres letras iniciales.")
 
         if automaton.state == "L2":
-            if _is_upper(symbol):
+            if is_upper_letter(symbol):
                 automaton.record(symbol, "L3", "Tercera letra de la placa.")
                 normalized.append(symbol)
                 continue
@@ -126,7 +124,7 @@ def validate_plate(text: str) -> ValidationResult:
 
         if automaton.state == "D3":
             # Carro termina aqui. Moto puede tener guion o letra extra.
-            if _is_upper(symbol):
+            if is_upper_letter(symbol):
                 automaton.record(symbol, "L4", "Letra adicional de placa de moto.")
                 normalized.append(symbol)
                 continue
@@ -137,7 +135,7 @@ def validate_plate(text: str) -> ValidationResult:
             return _rejected_plate_result(automaton, "La placa tiene caracteres extra al final.", normalized)
 
         if automaton.state == "AFTER_D3":
-            if _is_upper(symbol):
+            if is_upper_letter(symbol):
                 automaton.record(symbol, "L4", "Letra de moto despues del separador.")
                 normalized.append(symbol)
                 continue
