@@ -3,10 +3,14 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from src.core.symbol_classifier import is_alphanumeric, is_digit
+from src.core.symbol_classifier import is_alphanumeric, is_digit, is_letter
 from src.patterns.date_validator import validate_date
 from src.patterns.email_validator import validate_email
 from src.patterns.phone_validator import validate_phone
+from src.patterns.plate_validator import validate_plate
+
+# La contrasena NO se integra al scanner: es entrada atomica de formulario
+# (Parte B del proyecto), no un patron buscable en texto libre.
 
 DATE_LENGTH = 10
 
@@ -28,6 +32,10 @@ def _is_email_char(symbol: str) -> bool:
 
 def _is_phone_char(symbol: str) -> bool:
     return is_digit(symbol) or symbol in {"+", "-", " "}
+
+
+def _is_plate_char(symbol: str) -> bool:
+    return is_letter(symbol) or is_digit(symbol) or symbol == "-"
 
 
 def _collect(text: str, pos: int, predicate: Callable[[str], bool]) -> str:
@@ -102,11 +110,33 @@ def _try_phone(text: str, pos: int) -> PatternMatch | None:
     )
 
 
+def _try_plate(text: str, pos: int) -> PatternMatch | None:
+    """Prueba si en pos inicia una placa vehicular colombiana valida."""
+
+    if not ("A" <= text[pos] <= "Z"):
+        return None
+    raw = _collect(text, pos, _is_plate_char)
+    candidate = raw.rstrip("-")
+    if not candidate:
+        return None
+    result = validate_plate(candidate)
+    if not result.accepted:
+        return None
+    return PatternMatch(
+        pattern="plate",
+        start=pos,
+        end=pos + len(candidate),
+        raw=candidate,
+        normalized=result.normalized,
+    )
+
+
 def scan_text(text: str) -> list[PatternMatch]:
     """Recorre el texto caracter por caracter buscando patrones validos.
 
-    Prueba en cada posicion: fecha primero por ser formato fijo, luego
-    correo por requerir @, luego telefono. Si ninguno aplica, avanza uno.
+    Orden de prioridad en cada posicion:
+    fecha (formato fijo) > correo (requiere @) > telefono > placa.
+    Si ninguno aplica, avanza un caracter.
     No usa expresiones regulares. Cada candidato se valida con el automata
     formal del patron correspondiente.
     """
@@ -115,7 +145,12 @@ def scan_text(text: str) -> list[PatternMatch]:
     i = 0
 
     while i < len(text):
-        match = _try_date(text, i) or _try_email(text, i) or _try_phone(text, i)
+        match = (
+            _try_date(text, i)
+            or _try_email(text, i)
+            or _try_phone(text, i)
+            or _try_plate(text, i)
+        )
         if match:
             matches.append(match)
             i = match.end
