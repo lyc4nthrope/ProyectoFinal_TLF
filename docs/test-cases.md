@@ -120,3 +120,80 @@ Formato aceptado: `DD/MM/YYYY` con separador unico `/`, rangos de dia y mes vali
 | `29/02/1900` | RECHAZADO | Confirma que 1900 no es bisiesto — febrero solo tiene 28 dias |
 | `31/01/2024` | ACEPTADO | Enero tiene 31 dias — limite correcto |
 | `32/01/2024` | RECHAZADO | Dia 32 no existe para ningun mes |
+
+---
+
+## Placa vehicular
+
+Formato carro: `LLLDDD` o `LLL-DDD`. Formato moto: `LLLDDDL` o `LLL-DDDL`.
+Solo letras mayusculas A-Z y digitos 0-9. Guion opcional entre bloques.
+
+### Validos
+
+| Entrada | Resultado | Regla activada |
+|---------|-----------|---------------|
+| `ABC123` | ACEPTADO | Carro sin guion — 3 letras + 3 digitos, estado final D3 |
+| `ABC-123` | ACEPTADO | Carro con guion — separador opcional entre L3 y D1 |
+| `XYZ456A` | ACEPTADO | Moto sin guion — 3 letras + 3 digitos + 1 letra, estado final L4 |
+| `XYZ-456A` | ACEPTADO | Moto con guion — separador entre letras y digitos |
+| `AAA000` | ACEPTADO | Carro con letras y digitos minimos validos |
+| `ZZZ999Z` | ACEPTADO | Moto con todos los valores al limite superior del alfabeto |
+
+### Invalidos
+
+| Entrada | Resultado | Regla violada |
+|---------|-----------|--------------|
+| `abc123` | RECHAZADO | Letras minusculas — `START` exige letra mayuscula A-Z |
+| `AB123` | RECHAZADO | Solo 2 letras iniciales — L2 no puede recibir digito |
+| `ABC12` | RECHAZADO | Solo 2 digitos — cadena termina en D2, estado incompleto |
+| `ABC123X9` | RECHAZADO | Caracter extra despues del carro — L4 no acepta otro simbolo |
+| `ABC.123` | RECHAZADO | Simbolo `.` fuera del alfabeto permitido |
+| `1BC123` | RECHAZADO | La placa no puede iniciar con digito — `START` rechaza |
+| `ABC--123` | RECHAZADO | Doble guion — `AFTER_L3` rechaza segundo guion consecutivo |
+
+### Borde
+
+| Entrada | Resultado | Por que es borde |
+|---------|-----------|-----------------|
+| `ABC123-` | RECHAZADO | Guion al final — cadena termina en AFTER_D3, estado incompleto |
+| `ABC` | RECHAZADO | Solo letras — cadena termina en L3, sin digitos |
+| `ABC-` | RECHAZADO | Guion sin digitos — cadena termina en AFTER_L3 |
+| `ABC123Z` | ACEPTADO | Exactamente el formato moto — L4 como estado final valido |
+
+---
+
+## Contrasena segura
+
+Longitud minima 8. Requiere mayuscula, minuscula, digito y simbolo especial del conjunto `! @ # $ % & * - _`.
+No se busca en texto libre — solo validacion directa en formularios (Parte B).
+
+### Validos
+
+| Entrada | Resultado | Regla activada |
+|---------|-----------|---------------|
+| `Secure@1` | ACEPTADO | 8 chars exactos — todas las banderas activas al cierre |
+| `MyP@ssw0rd!` | ACEPTADO | Larga, multiples simbolos y tipos mezclados |
+| `Abcde@1z` | ACEPTADO | Limite inferior de longitud — exactamente 8 caracteres |
+| `A1@bcdefg` | ACEPTADO | Mayuscula, digito y simbolo al inicio — resto minusculas |
+| `ZzZzZz1@` | ACEPTADO | Alternancia de mayusculas y minusculas, digito y simbolo |
+
+### Invalidos
+
+| Entrada | Resultado | Regla violada |
+|---------|-----------|--------------|
+| `Ab1@` | RECHAZADO | 4 caracteres — longitud menor a 8 |
+| `secure@1abc` | RECHAZADO | Sin letra mayuscula — bandera `has_upper` nunca activada |
+| `SECURE@1ABC` | RECHAZADO | Sin letra minuscula — bandera `has_lower` nunca activada |
+| `SecurePass@` | RECHAZADO | Sin digito — bandera `has_digit` nunca activada |
+| `SecurePass1` | RECHAZADO | Sin simbolo especial — bandera `has_special` nunca activada |
+| `Secure^1ab` | RECHAZADO | `^` no pertenece al conjunto de simbolos permitidos — rechazo inmediato |
+| `` | RECHAZADO | Cadena vacia — sin simbolos para procesar |
+
+### Borde
+
+| Entrada | Resultado | Por que es borde |
+|---------|-----------|-----------------|
+| `Abc@1zX` | RECHAZADO | 7 caracteres — todas las banderas activas pero longitud insuficiente |
+| `Abcde@1z` | ACEPTADO | Exactamente 8 — limite inferior valido |
+| `abcdefgh` | RECHAZADO | 8 chars pero sin mayuscula, digito ni simbolo — tres banderas inactivas |
+| `A1@bbbbb` | ACEPTADO | Minimo de tipos en primeros 3 chars, resto minusculas completan longitud |

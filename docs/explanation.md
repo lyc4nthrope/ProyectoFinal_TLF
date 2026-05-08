@@ -207,3 +207,144 @@ Al agotar la entrada:
 El automata valida la forma (`DD/MM/YYYY`) caracter por caracter.
 Las restricciones de rango y calendario (mes, dia, bisiesto) se evaluan despues del recorrido, sobre los valores numericos extraidos.
 Esto corresponde a un AFD con verificacion semantica posterior: el automata acepta la sintaxis, y una capa adicional confirma el significado.
+
+---
+
+## Validador de placa vehicular
+
+### Alfabeto
+
+```
+Σ = { A, B, ..., Z, 0, 1, ..., 9, - }
+```
+
+Solo letras mayusculas del rango A-Z. El guion `-` es separador opcional.
+
+### Estados
+
+```
+Q = { START, L1, L2, L3, AFTER_L3, D1, D2, D3, AFTER_D3, L4, ACCEPT, REJECT }
+```
+
+### Estado inicial
+
+```
+q₀ = START
+```
+
+### Estados de aceptacion
+
+```
+F = { ACCEPT }
+```
+
+`ACCEPT` es alcanzable desde `D3` (carro, 6 chars) o desde `L4` (moto, 7 chars).
+
+### Funcion de transicion
+
+| Estado actual | Simbolo leido | Estado siguiente | Nota |
+|--------------|--------------|-----------------|------|
+| `START` | letra mayuscula | `L1` | Primera letra del bloque inicial |
+| `START` | otro | `REJECT` | La placa debe iniciar con letra mayuscula |
+| `L1` | letra mayuscula | `L2` | Segunda letra |
+| `L1` | otro | `REJECT` | Se esperaba letra |
+| `L2` | letra mayuscula | `L3` | Tercera letra |
+| `L2` | otro | `REJECT` | Se esperaba letra |
+| `L3` | `-` | `AFTER_L3` | Separador opcional entre letras y digitos |
+| `L3` | digito | `D1` | Sin separador — primer digito directo |
+| `L3` | otro | `REJECT` | Simbolo invalido despues de las tres letras |
+| `AFTER_L3` | digito | `D1` | Primer digito despues del separador |
+| `AFTER_L3` | otro | `REJECT` | El separador debe ir seguido de digito |
+| `D1` | digito | `D2` | Segundo digito |
+| `D1` | otro | `REJECT` | Se esperaba digito |
+| `D2` | digito | `D3` | Tercer digito |
+| `D2` | otro | `REJECT` | Se esperaba digito |
+| `D3` | letra mayuscula | `L4` | Septima letra — indica placa de moto |
+| `D3` | `-` | `AFTER_D3` | Separador antes de la letra de moto |
+| `D3` | otro | `REJECT` | Simbolo inesperado despues del tercer digito |
+| `AFTER_D3` | letra mayuscula | `L4` | Letra de moto despues del separador |
+| `AFTER_D3` | otro | `REJECT` | El separador debe ir seguido de la letra de moto |
+| `L4` | cualquiera | `REJECT` | La placa no puede tener caracteres extra |
+
+### Condiciones de cierre
+
+Al agotar la entrada:
+- Si estado es `D3`: `ACCEPT` — placa de carro valida (`LLLDDD`).
+- Si estado es `L4`: `ACCEPT` — placa de moto valida (`LLLDDDL`).
+- Si estado es `D1` o `D2`: `REJECT` — faltan digitos.
+- Si estado es `AFTER_D3`: `REJECT` — cadena termina en guion sin letra de moto.
+- Si estado es `L1`, `L2`, `L3` o `AFTER_L3`: `REJECT` — cadena incompleta.
+
+### Nota sobre el modelo
+
+El mismo AFD acepta dos formatos de placa (carro y moto) con un unico conjunto de estados.
+La distincion se hace al cierre: si el estado final es `D3` es carro; si es `L4` es moto.
+El separador guion es absorbido por estados intermedios (`AFTER_L3`, `AFTER_D3`) y no afecta
+el conteo de letras ni digitos, lo que mantiene el automata determinista y explicable en papel.
+
+---
+
+## Validador de contrasena segura
+
+### Alfabeto
+
+```
+Σ = { a..z } ∪ { A..Z } ∪ { 0..9 } ∪ { !, @, #, $, %, &, *, -, _ }
+```
+
+Cualquier caracter fuera de este conjunto provoca rechazo inmediato.
+
+### Estados
+
+```
+Q = { SCANNING, ACCEPT, REJECT }
+```
+
+El estado `SCANNING` es un estado aumentado: se le asocia un vector de banderas
+`(length: int, has_upper: bool, has_lower: bool, has_digit: bool, has_special: bool)`.
+Todas las banderas inician en `False` y `length` en 0.
+
+### Estado inicial
+
+```
+q₀ = SCANNING
+```
+
+### Estados de aceptacion
+
+```
+F = { ACCEPT }
+```
+
+### Funcion de transicion
+
+| Estado actual | Simbolo leido | Efecto sobre banderas | Estado siguiente |
+|--------------|--------------|----------------------|-----------------|
+| `SCANNING` | letra A-Z | activa `has_upper` si aun no estaba activa | `SCANNING` |
+| `SCANNING` | letra a-z | activa `has_lower` si aun no estaba activa | `SCANNING` |
+| `SCANNING` | digito 0-9 | activa `has_digit` si aun no estaba activa | `SCANNING` |
+| `SCANNING` | simbolo del conjunto | activa `has_special` si aun no estaba activa | `SCANNING` |
+| `SCANNING` | simbolo fuera del alfabeto | ninguno | `REJECT` (inmediato) |
+
+En todos los casos validos, `length` se incrementa en 1 por cada simbolo consumido.
+
+### Condiciones de cierre
+
+Al agotar la entrada:
+- Si `length >= 8` y las cuatro banderas son `True`: `ACCEPT`.
+- Si cualquier condicion falla: `REJECT` con mensaje que lista todas las condiciones incumplidas.
+
+### Nota sobre el modelo
+
+Este automata es un **AFD aumentado con vector de banderas** (tambien llamado automata de conteo
+o automata con memoria acotada). A diferencia de un AFD puro, el estado efectivo es el producto
+cartesiano `SCANNING × {True,False}⁴ × ℕ`, lo que lo hace formalmente un AFD con un numero
+finito de estados (acotado por la longitud maxima practica de la contrasena).
+
+La traza registra cada activacion de bandera, lo que permite explicar paso a paso por que
+una contrasena es aceptada o rechazada durante la sustentacion oral.
+
+La contrasena **no se integra al scanner de texto libre** porque no tiene delimitadores
+reconocibles en texto corriente — cualquier secuencia de caracteres podria ser una contrasena,
+lo que generaria falsos positivos masivos. Es un dato de entrada atomico validado exclusivamente
+en formularios interactivos (Parte B del proyecto).
