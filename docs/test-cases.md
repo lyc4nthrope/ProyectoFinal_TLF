@@ -162,6 +162,87 @@ Solo letras mayusculas A-Z y digitos 0-9. Guion opcional entre bloques.
 
 ---
 
+## URL
+
+Formato aceptado: `http://` o `https://` seguido de dominio con al menos un punto y ruta opcional.
+
+### Validos
+
+| Entrada | Resultado | Regla activada |
+|---------|-----------|---------------|
+| `http://example.com` | ACEPTADO | Protocolo http + dominio con punto |
+| `https://example.com` | ACEPTADO | Protocolo https valido |
+| `https://www.google.com` | ACEPTADO | Subdominio www valido |
+| `https://example.com/path/to/page` | ACEPTADO | Ruta con multiples segmentos |
+| `https://example.com/search?q=hola&lang=es` | ACEPTADO | Query string con multiples parametros |
+| `https://api.sub.example.org` | ACEPTADO | Multiples subdominios |
+| `https://example.co.uk` | ACEPTADO | TLD de pais compuesto |
+| `http://example.com/` | ACEPTADO | Barra final de ruta valida |
+| `https://example.com/page#section` | ACEPTADO | Fragmento con `#` |
+| `https://example.com?q=test` | ACEPTADO | Query sin ruta previa |
+| `HTTP://example.com` | ACEPTADO | Protocolo en mayusculas — case insensitive |
+
+### Invalidos
+
+| Entrada | Resultado | Regla violada |
+|---------|-----------|--------------|
+| `ftp://example.com` | RECHAZADO | Protocolo `ftp` no es `http` ni `https` |
+| `http://example` | RECHAZADO | Dominio sin punto — `saw_domain_dot = False` al cierre |
+| `http:/example.com` | RECHAZADO | Solo un slash — `SLASH1` exige segundo `/` |
+| `http://` | RECHAZADO | Dominio vacio — `SLASH2` exige letra o digito |
+| `` | RECHAZADO | Cadena vacia |
+| `http://example-.com` | RECHAZADO | Etiqueta termina en guion — `DOMAIN_HYPHEN` exige continuacion |
+| `http://.example.com` | RECHAZADO | Dominio inicia con punto — `DOMAIN_DOT` exige letra o digito |
+| `example.com` | RECHAZADO | Sin protocolo — `START` solo acepta `h` o `H` |
+
+### Borde
+
+| Entrada | Resultado | Por que es borde |
+|---------|-----------|-----------------|
+| `http://a.bc` | ACEPTADO | Dominio minimo valido: una letra + punto + dos letras |
+| `https://example.com/page?a=1&b=2` | ACEPTADO | Combinacion de ruta y query |
+| `http://sub.sub.domain.org` | ACEPTADO | Multiples etiquetas de dominio |
+
+---
+
+## NIT (Numero de Identificacion Tributaria)
+
+Formato aceptado: `NNN.NNN.NNN-D` — tres grupos de tres digitos separados por punto,
+guion y un digito verificador al final.
+
+### Validos
+
+| Entrada | Resultado | Regla activada |
+|---------|-----------|---------------|
+| `900.123.456-7` | ACEPTADO | Formato completo con todos los grupos y verificador |
+| `000.000.000-0` | ACEPTADO | Digitos minimos validos en todos los grupos |
+| `999.999.999-9` | ACEPTADO | Digitos maximos validos |
+| `800.100.200-0` | ACEPTADO | Digito verificador cero — valido |
+| `123.456.789-1` | ACEPTADO | Grupos distintos, estructura correcta |
+
+### Invalidos
+
+| Entrada | Resultado | Regla violada |
+|---------|-----------|--------------|
+| `900123456-7` | RECHAZADO | Sin puntos — `D3` exige `.`, recibe digito |
+| `900.123.4567` | RECHAZADO | Sin guion al final — `D9` exige `-` |
+| `900` | RECHAZADO | Solo primer grupo — cadena termina en `D3` |
+| `900.123` | RECHAZADO | Solo dos grupos — cadena termina en `D6` |
+| `9AB.123.456-7` | RECHAZADO | Letras en grupo — `D1` exige digito |
+| `900-123-456-7` | RECHAZADO | Separador incorrecto — `D3` exige `.`, recibe `-` |
+| `900.123.456-7X` | RECHAZADO | Caracter extra — `CHECK` rechaza cualquier simbolo |
+| `` | RECHAZADO | Cadena vacia |
+
+### Borde
+
+| Entrada | Resultado | Por que es borde |
+|---------|-----------|-----------------|
+| `900.123.456-77` | RECHAZADO | Dos digitos verificadores — `CHECK` no acepta mas entrada |
+| `90.123.456-7` | RECHAZADO | Primer grupo con 2 digitos — `D2` exige digito, recibe `.` |
+| `9000.123.456-7` | RECHAZADO | Primer grupo con 4 digitos — `D3` exige `.`, recibe digito |
+
+---
+
 ## Contrasena segura
 
 Longitud minima 8. Requiere mayuscula, minuscula, digito y simbolo especial del conjunto `! @ # $ % & * - _`.
