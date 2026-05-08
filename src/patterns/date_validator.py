@@ -88,9 +88,6 @@ def validate_date(text: str) -> ValidationResult:
 
     automaton = TraceableAutomaton(state="START")
     normalized_symbols: list[str] = []
-    day_digits = 0
-    month_digits = 0
-    year_digits = 0
 
     if not text:
         return ValidationResult.reject(
@@ -105,7 +102,6 @@ def validate_date(text: str) -> ValidationResult:
             if is_digit(symbol):
                 automaton.record(symbol, "DAY_FIRST", "Empieza la lectura del dia.")
                 normalized_symbols.append(symbol)
-                day_digits = 1
                 continue
 
             automaton.record(symbol, "REJECT", "La fecha debe iniciar con un digito.")
@@ -119,7 +115,6 @@ def validate_date(text: str) -> ValidationResult:
             if is_digit(symbol):
                 automaton.record(symbol, "AFTER_DAY", "Se completa el bloque de dos digitos del dia.")
                 normalized_symbols.append(symbol)
-                day_digits = 2
                 continue
 
             automaton.record(symbol, "REJECT", "El dia debe tener exactamente dos digitos.")
@@ -146,7 +141,6 @@ def validate_date(text: str) -> ValidationResult:
             if is_digit(symbol):
                 automaton.record(symbol, "MONTH_SECOND", "Empieza la lectura del mes.")
                 normalized_symbols.append(symbol)
-                month_digits = 1
                 continue
 
             automaton.record(symbol, "REJECT", "El mes debe iniciar con un digito.")
@@ -160,7 +154,6 @@ def validate_date(text: str) -> ValidationResult:
             if is_digit(symbol):
                 automaton.record(symbol, "AFTER_MONTH", "Se completa el bloque de dos digitos del mes.")
                 normalized_symbols.append(symbol)
-                month_digits = 2
                 continue
 
             automaton.record(symbol, "REJECT", "El mes debe tener exactamente dos digitos.")
@@ -187,7 +180,6 @@ def validate_date(text: str) -> ValidationResult:
             if is_digit(symbol):
                 automaton.record(symbol, "YEAR_2", "Se registra el primer digito del anio.")
                 normalized_symbols.append(symbol)
-                year_digits = 1
                 continue
 
             automaton.record(symbol, "REJECT", "El anio debe iniciar con un digito.")
@@ -200,7 +192,6 @@ def validate_date(text: str) -> ValidationResult:
             if is_digit(symbol):
                 automaton.record(symbol, "YEAR_3", "Se registra el segundo digito del anio.")
                 normalized_symbols.append(symbol)
-                year_digits = 2
                 continue
 
             automaton.record(symbol, "REJECT", "El anio debe tener cuatro digitos.")
@@ -213,7 +204,6 @@ def validate_date(text: str) -> ValidationResult:
             if is_digit(symbol):
                 automaton.record(symbol, "YEAR_4", "Se registra el tercer digito del anio.")
                 normalized_symbols.append(symbol)
-                year_digits = 3
                 continue
 
             automaton.record(symbol, "REJECT", "El anio debe tener cuatro digitos.")
@@ -226,7 +216,6 @@ def validate_date(text: str) -> ValidationResult:
             if is_digit(symbol):
                 automaton.record(symbol, "DATE_COMPLETE", "Se completa el bloque de cuatro digitos del anio.")
                 normalized_symbols.append(symbol)
-                year_digits = 4
                 continue
 
             automaton.record(symbol, "REJECT", "El anio debe terminar con un digito.")
@@ -248,14 +237,6 @@ def validate_date(text: str) -> ValidationResult:
         return _rejected_date_result(
             automaton,
             "La fecha termina antes de completar su estructura.",
-            normalized_symbols,
-        )
-
-    if day_digits != 2 or month_digits != 2 or year_digits != 4:
-        automaton.finish("REJECT", "La estructura de bloques numericos no quedo completa.")
-        return _rejected_date_result(
-            automaton,
-            "La fecha no cumple con la cantidad exacta de digitos requerida.",
             normalized_symbols,
         )
 
