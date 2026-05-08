@@ -1,4 +1,9 @@
-"""Validador manual para correos electronicos."""
+"""AFD para correos electronicos (local@dominio.tld).
+
+Responsabilidad unica: recorrer char-by-char con estados LOCAL /
+LOCAL_SEPARATOR / AFTER_AT / DOMAIN / DOMAIN_HYPHEN / AFTER_DOMAIN_DOT
+y verificar TLD con al menos 2 letras al cierre. Sin logica de UI.
+"""
 
 from src.core.automaton import TraceableAutomaton
 from src.core.result import ValidationResult

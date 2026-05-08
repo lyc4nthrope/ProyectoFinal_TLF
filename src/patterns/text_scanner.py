@@ -1,4 +1,9 @@
-"""Escaneo de patrones dentro de textos completos."""
+"""Scanner char-by-char sin regex para detectar patrones en texto libre.
+
+Responsabilidad unica: recorrer texto posicion por posicion, intentar
+cada patron en orden de prioridad (fecha > email > telefono > placa)
+y retornar lista de PatternMatch. No valida — delega a cada AFD.
+"""
 
 from collections.abc import Callable
 from dataclasses import dataclass

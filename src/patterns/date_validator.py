@@ -1,4 +1,10 @@
-"""Validador manual para fechas."""
+"""AFD para fechas en formato estricto DD/MM/YYYY (1900-2100).
+
+Responsabilidad unica: recorrer char-by-char con estados lineales
+DAY_FIRST / AFTER_DAY / MONTH_FIRST / MONTH_SECOND / AFTER_MONTH /
+YEAR_1..4 / DATE_COMPLETE y luego verificar rangos de calendario.
+Sin logica de UI ni de scanner.
+"""
 
 from src.core.automaton import TraceableAutomaton
 from src.core.result import ValidationResult

@@ -1,4 +1,9 @@
-"""Validador manual para numeros telefonicos."""
+"""AFD para numeros telefonicos (10-13 digitos, prefijo + opcional).
+
+Responsabilidad unica: recorrer char-by-char con estados START /
+AFTER_PLUS / IN_NUMBER / AFTER_SEPARATOR y validar cantidad de digitos
+reales al cierre. Sin logica de UI ni de scanner.
+"""
 
 from src.core.automaton import TraceableAutomaton
 from src.core.result import ValidationResult

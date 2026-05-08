@@ -1,23 +1,16 @@
-"""Validador manual para contrasenas seguras."""
+"""AFD aumentado con vector de banderas para validar contrasenas seguras.
+
+Responsabilidad unica: recorrer char-by-char, activar banderas booleanas
+(upper, lower, digit, special) y al cierre verificar longitud minima.
+No se integra al scanner — solo uso en formularios interactivos (Parte B).
+"""
 
 from src.core.automaton import TraceableAutomaton
 from src.core.result import ValidationResult
-from src.core.symbol_classifier import is_digit, is_letter
+from src.core.symbol_classifier import is_digit, is_lower_letter, is_upper_letter
 
 SPECIAL_SYMBOLS: frozenset[str] = frozenset("!@#$%&*-_")
 MIN_LENGTH = 8
-
-
-def _is_upper(symbol: str) -> bool:
-    """Indica si el simbolo es letra mayuscula ASCII."""
-
-    return is_letter(symbol) and "A" <= symbol <= "Z"
-
-
-def _is_lower(symbol: str) -> bool:
-    """Indica si el simbolo es letra minuscula ASCII."""
-
-    return is_letter(symbol) and "a" <= symbol <= "z"
 
 
 def _is_special(symbol: str) -> bool:
@@ -80,7 +73,7 @@ def validate_password(text: str) -> ValidationResult:
         )
 
     for symbol in text:
-        if _is_upper(symbol):
+        if is_upper_letter(symbol):
             if not has_upper:
                 automaton.stay(symbol, "Bandera has_upper activada.")
                 has_upper = True
@@ -88,7 +81,7 @@ def validate_password(text: str) -> ValidationResult:
                 automaton.stay(symbol, "Letra mayuscula — bandera has_upper ya activa.")
             continue
 
-        if _is_lower(symbol):
+        if is_lower_letter(symbol):
             if not has_lower:
                 automaton.stay(symbol, "Bandera has_lower activada.")
                 has_lower = True
