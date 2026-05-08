@@ -167,3 +167,59 @@ No se aceptan:
 - `31/04/2024`
 - `29/02/2023`
 - `15/13/2024`
+
+## Placa vehicular
+
+### Alfabeto permitido
+
+- Letras: `A-Z` (solo mayusculas)
+- Digitos: `0-9`
+- Separador opcional: `-`
+
+### Regla estructural
+
+La placa sigue uno de dos formatos segun el tipo de vehiculo:
+
+- **Carro**: exactamente 3 letras seguidas de 3 digitos — `LLLDDD` o `LLL-DDD`
+- **Moto**: exactamente 3 letras, 3 digitos y 1 letra al final — `LLLDDDL` o `LLL-DDDL`
+
+El guion es opcional y solo puede aparecer entre el bloque de letras y el bloque de digitos.
+No se permiten:
+
+- letras minusculas
+- mas de un guion
+- caracteres distintos a letras, digitos y guion
+- simbolos extra al final
+
+### Restricciones
+
+- Las letras deben pertenecer estrictamente al rango `A-Z`.
+- Los digitos deben pertenecer al rango `0-9`.
+- La longitud total sin guion es de 6 caracteres (carro) o 7 caracteres (moto).
+- La cadena no puede terminar con guion.
+
+### Idea de estados
+
+- `START`: inicio del analisis
+- `L1`, `L2`, `L3`: primera, segunda y tercera letra del bloque inicial
+- `AFTER_L3`: se leyo el guion opcional despues de las tres letras
+- `D1`, `D2`, `D3`: primer, segundo y tercer digito
+- `AFTER_D3`: se leyo el guion opcional despues de los tres digitos (solo en moto)
+- `L4`: septima letra opcional (moto)
+- `ACCEPT`: cadena valida
+- `REJECT`: cadena viola una regla formal
+
+### Ejemplos validos
+
+- `ABC123` — carro sin guion
+- `ABC-123` — carro con guion
+- `XYZ456A` — moto sin guion
+- `XYZ-456A` — moto con guion separando letras y digitos
+
+### Ejemplos invalidos
+
+- `abc123` — letras minusculas no permitidas
+- `AB123` — solo dos letras iniciales
+- `ABC12` — solo dos digitos
+- `ABC123X9` — caracter extra al final
+- `ABC.123` — simbolo no permitido
