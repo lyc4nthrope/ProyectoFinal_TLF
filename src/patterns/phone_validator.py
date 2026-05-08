@@ -80,7 +80,7 @@ def validate_phone(text: str) -> ValidationResult:
             trace=["START: no hay simbolos para procesar."],
         )
 
-    for index, symbol in enumerate(text):
+    for symbol in text:
         # El estado START decide si la cadena entra como telefono local o internacional.
         if automaton.state == "START":
             if _is_plus(symbol):
@@ -113,18 +113,10 @@ def validate_phone(text: str) -> ValidationResult:
                 continue
 
             if _is_phone_separator(symbol):
-                if index == len(text) - 1:
-                    automaton.record(
-                        symbol,
-                        "REJECT",
-                        "El telefono no puede terminar con separador.",
-                    )
-                    return _rejected_phone_result(automaton, "El telefono termina con separador.")
-
                 automaton.record(
                     symbol,
                     "AFTER_SEPARATOR",
-                    "Se separan bloques numericos sin cerrar la cadena.",
+                    "Se separan bloques numericos.",
                 )
                 continue
 
@@ -161,6 +153,11 @@ def validate_phone(text: str) -> ValidationResult:
             )
 
     # La aceptacion final depende del total de digitos reales, no de la longitud cruda.
+    # AFTER_SEPARATOR al cierre = termina en separador — rechazo formal sin lookahead.
+    if automaton.state == "AFTER_SEPARATOR":
+        automaton.finish("REJECT", "La cadena termina en separador — estado no aceptable.")
+        return _rejected_phone_result(automaton, "El telefono termina con separador.")
+
     if digits < MIN_DIGITS or digits > MAX_DIGITS:
         automaton.finish(
             "REJECT",
