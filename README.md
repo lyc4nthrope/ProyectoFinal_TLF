@@ -7,7 +7,7 @@ Búsqueda y validación de patrones en textos y sistemas interactivos.
 
 ---
 
-## ⚡ Instalación rápida
+## Instalación rápida
 
 Descarga el ejecutable para tu sistema operativo desde
 **[GitHub Releases](https://github.com/lyc4nthrope/ProyectoFinal_TLF/releases)**:
@@ -34,7 +34,7 @@ tlf-windows.exe ui
 
 ---
 
-## 🐍 Uso desde código fuente
+## Uso desde código fuente
 
 ```bash
 # 1. Clonar
@@ -58,7 +58,7 @@ tlf ui                                               # Mismo resultado
 
 ---
 
-## 📦 ¿Qué hace?
+## ¿Qué hace?
 
 Aplicación en Python que detecta y valida patrones en textos mediante
 **autómatas finitos deterministas (AFD)** implementados manualmente, sin usar
@@ -73,7 +73,7 @@ librerías de expresiones regulares predefinidas.
 
 ---
 
-## 🧩 Patrones soportados
+## Patrones soportados
 
 | Patrón | Formato | Scanner | Formulario |
 |--------|---------|:-------:|:----------:|
@@ -87,7 +87,7 @@ librerías de expresiones regulares predefinidas.
 
 ---
 
-## 📁 Estructura del proyecto
+## Estructura del proyecto
 
 ```
 src/
@@ -105,7 +105,7 @@ docs/            -- Documentación formal del proyecto
 
 ---
 
-## 🧪 Tests
+## Tests
 
 ```bash
 python3 -m pytest tests/ -q
@@ -117,7 +117,7 @@ Los tests se ejecutan automáticamente en **Linux, macOS y Windows**
 
 ---
 
-## 🚀 CI/CD
+## CI/CD
 
 | Acción | Evento | Resultado |
 |--------|--------|-----------|
@@ -126,7 +126,7 @@ Los tests se ejecutan automáticamente en **Linux, macOS y Windows**
 
 ---
 
-## 👥 Créditos
+## Créditos
 
 - Cristhian Eduardo Osorio Restrepo
 - Daniel Stiven Perez Cordoba
