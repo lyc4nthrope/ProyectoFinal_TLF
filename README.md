@@ -131,4 +131,4 @@ Los tests se ejecutan automáticamente en **Linux, macOS y Windows**
 - Cristhian Eduardo Osorio Restrepo
 - Daniel Stiven Perez Cordoba
 
-**Universidad del Quindío — Teoría de Lenguajes Formales — 2025**
+**Universidad del Quindío — Teoría de Lenguajes Formales — 2026**
