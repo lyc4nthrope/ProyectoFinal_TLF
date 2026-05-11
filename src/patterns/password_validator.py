@@ -1,9 +1,21 @@
-"""AFD aumentado con vector de banderas para validar contrasenas seguras.
+"""AFD para validar contrasenas con estado que refleja condiciones cumplidas.
 
-Responsabilidad unica: recorrer char-by-char, activar banderas booleanas
-(upper, lower, digit, special) y al cierre verificar longitud minima.
+A diferencia de los demas validadores, la contrasena no tiene una estructura
+lineal (como fecha o telefono) sino un conjunto de condiciones booleanas:
+mayuscula, minuscula, digito y caracter especial.
+
+El estado del automata cambia CADA VEZ que se activa una nueva bandera,
+generando una traza como:
+
+    SCANNING --['a']--> SEEN_L: Letra minuscula detectada.
+    SEEN_L --['A']--> SEEN_L_U: Letra mayuscula detectada.
+    SEEN_L_U --['1']--> SEEN_L_U_D: Digito detectado.
+    SEEN_L_U_D --['!']--> SEEN_L_U_D_S: Caracter especial detectado.
+
 No se integra al scanner — solo uso en formularios interactivos (Parte B).
 """
+
+from __future__ import annotations
 
 from src.core.automaton import TraceableAutomaton
 from src.core.result import ValidationResult
@@ -15,8 +27,28 @@ MIN_LENGTH = 8
 
 def _is_special(symbol: str) -> bool:
     """Indica si el simbolo pertenece al conjunto de simbolos especiales permitidos."""
-
     return symbol in SPECIAL_SYMBOLS
+
+
+def _state_name(has_lower: bool, has_upper: bool, has_digit: bool, has_special: bool) -> str:
+    """Construye el nombre del estado a partir de las banderas activas.
+
+    Ejemplos:
+        (False, False, False, False) -> "SCANNING"
+        (True,  False, False, False) -> "SEEN_L"
+        (True,  True,  False, False) -> "SEEN_L_U"
+        (True,  True,  True,  True)  -> "SEEN_L_U_D_S"
+    """
+    parts: list[str] = []
+    if has_lower:
+        parts.append("L")
+    if has_upper:
+        parts.append("U")
+    if has_digit:
+        parts.append("D")
+    if has_special:
+        parts.append("S")
+    return "SCANNING" if not parts else f"SEEN_{'_'.join(parts)}"
 
 
 def _build_rejection_message(
@@ -27,8 +59,7 @@ def _build_rejection_message(
     has_special: bool,
 ) -> str:
     """Construye un mensaje que lista todas las condiciones que fallaron."""
-
-    missing = []
+    missing: list[str] = []
     if length < MIN_LENGTH:
         missing.append(f"longitud minima de {MIN_LENGTH} caracteres")
     if not has_upper:
@@ -43,10 +74,11 @@ def _build_rejection_message(
 
 
 def validate_password(text: str) -> ValidationResult:
-    """Valida contrasenas mediante un automata de banderas char-by-char.
+    """Valida contrasenas con automata de estados transicionales.
 
-    El automata recorre la cadena en un unico pase y activa cuatro banderas
-    booleanas. Al agotar la entrada evalua longitud y banderas simultaneamente.
+    Cada vez que se activa una nueva bandera (lower, upper, digit, special),
+    el automata TRANSICIONA a un nuevo estado que refleja el conjunto de
+    condiciones cumplidas hasta ese momento.
 
     Reglas:
     - Longitud minima de 8 caracteres.
@@ -73,44 +105,57 @@ def validate_password(text: str) -> ValidationResult:
         )
 
     for symbol in text:
+        new_flag = False
+        desc = ""
+
         if is_upper_letter(symbol):
             if not has_upper:
-                automaton.stay(symbol, "Bandera has_upper activada.")
                 has_upper = True
+                new_flag = True
+                desc = "Letra mayuscula detectada."
             else:
-                automaton.stay(symbol, "Letra mayuscula — bandera has_upper ya activa.")
-            continue
+                desc = "Letra mayuscula repetida — bandera ya activa."
 
-        if is_lower_letter(symbol):
+        elif is_lower_letter(symbol):
             if not has_lower:
-                automaton.stay(symbol, "Bandera has_lower activada.")
                 has_lower = True
+                new_flag = True
+                desc = "Letra minuscula detectada."
             else:
-                automaton.stay(symbol, "Letra minuscula — bandera has_lower ya activa.")
-            continue
+                desc = "Letra minuscula repetida — bandera ya activa."
 
-        if is_digit(symbol):
+        elif is_digit(symbol):
             if not has_digit:
-                automaton.stay(symbol, "Bandera has_digit activada.")
                 has_digit = True
+                new_flag = True
+                desc = "Digito detectado."
             else:
-                automaton.stay(symbol, "Digito — bandera has_digit ya activa.")
-            continue
+                desc = "Digito repetido — bandera ya activa."
 
-        if _is_special(symbol):
+        elif _is_special(symbol):
             if not has_special:
-                automaton.stay(symbol, "Bandera has_special activada.")
                 has_special = True
+                new_flag = True
+                desc = "Caracter especial detectado."
             else:
-                automaton.stay(symbol, "Simbolo especial — bandera has_special ya activa.")
-            continue
+                desc = "Caracter especial repetido — bandera ya activa."
 
-        automaton.record(symbol, "REJECT", f"El simbolo {symbol!r} no pertenece al alfabeto permitido.")
-        return ValidationResult.reject(
-            consumed=automaton.consumed,
-            message=f"El simbolo {symbol!r} no esta permitido en la contrasena.",
-            trace=automaton.trace,
-        )
+        else:
+            automaton.record(
+                symbol,
+                "REJECT",
+                f"Simbolo {symbol!r} no pertenece al alfabeto permitido.",
+            )
+            return ValidationResult.reject(
+                consumed=automaton.consumed,
+                message=f"El simbolo {symbol!r} no esta permitido en la contrasena.",
+                trace=automaton.trace,
+            )
+
+        if new_flag:
+            automaton.record(symbol, _state_name(has_lower, has_upper, has_digit, has_special), desc)
+        else:
+            automaton.stay(symbol, desc)
 
     length = automaton.consumed
     all_conditions_met = (

@@ -96,10 +96,12 @@ class PasswordValidatorTests(unittest.TestCase):
         result = validate_password("Secure@1")
 
         trace_text = " ".join(result.trace)
-        self.assertIn("has_upper", trace_text)
-        self.assertIn("has_lower", trace_text)
-        self.assertIn("has_special", trace_text)
-        self.assertIn("has_digit", trace_text)
+        # Verificar que la traza muestra transiciones de estado reales.
+        # Cada nueva bandera activada produce un estado compuesto diferente.
+        self.assertIn("SEEN_U", trace_text)       # 'S' activa mayuscula
+        self.assertIn("SEEN_L_U", trace_text)     # 'e' activa minuscula
+        self.assertIn("SEEN_L_U_S", trace_text)   # '@' activa especial
+        self.assertIn("SEEN_L_U_D_S", trace_text) # '1' activa digito
 
 
 if __name__ == "__main__":
