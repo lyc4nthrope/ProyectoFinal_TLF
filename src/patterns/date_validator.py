@@ -7,7 +7,7 @@ Sin logica de UI ni de scanner.
 """
 
 from src.core.automaton import TraceableAutomaton
-from src.core.result import ValidationResult
+from src.core.result import ValidationResult, build_accept, build_reject, reject_empty
 from src.core.symbol_classifier import is_digit
 
 MIN_YEAR = 1900
@@ -40,39 +40,6 @@ def _is_leap_year(year: int) -> bool:
     return (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
 
 
-def _accepted_date_result(
-    automaton: TraceableAutomaton,
-    normalized_symbols: list[str],
-) -> ValidationResult:
-    """Normaliza la salida aceptada de la fecha."""
-
-    return ValidationResult.accept(
-        consumed=automaton.consumed,
-        message="Fecha valida.",
-        trace=automaton.trace,
-        normalized="".join(normalized_symbols),
-    )
-
-
-def _rejected_date_result(
-    automaton: TraceableAutomaton,
-    message: str,
-    normalized_symbols: list[str] | None = None,
-) -> ValidationResult:
-    """Centraliza la salida rechazada de la fecha."""
-
-    normalized = ""
-    if normalized_symbols is not None:
-        normalized = "".join(normalized_symbols)
-
-    return ValidationResult.reject(
-        consumed=automaton.consumed,
-        message=message,
-        trace=automaton.trace,
-        normalized=normalized,
-    )
-
-
 def validate_date(text: str) -> ValidationResult:
     """Valida fechas con formato estricto `DD/MM/YYYY`.
 
@@ -90,11 +57,7 @@ def validate_date(text: str) -> ValidationResult:
     normalized_symbols: list[str] = []
 
     if not text:
-        return ValidationResult.reject(
-            consumed=0,
-            message="La cadena esta vacia.",
-            trace=["START: no hay simbolos para procesar."],
-        )
+        return reject_empty("START")
 
     for symbol in text:
         # START obliga a iniciar la fecha con el primer digito del dia.
@@ -105,9 +68,10 @@ def validate_date(text: str) -> ValidationResult:
                 continue
 
             automaton.record(symbol, "REJECT", "La fecha debe iniciar con un digito.")
-            return _rejected_date_result(
-                automaton,
-                "La fecha inicia con un simbolo invalido.",
+            return build_reject(
+                consumed=automaton.consumed,
+                message="La fecha inicia con un simbolo invalido.",
+                trace=automaton.trace,
             )
 
         # DAY_FIRST obliga a completar el segundo digito del dia.
@@ -118,9 +82,10 @@ def validate_date(text: str) -> ValidationResult:
                 continue
 
             automaton.record(symbol, "REJECT", "El dia debe tener exactamente dos digitos.")
-            return _rejected_date_result(
-                automaton,
-                "El dia de la fecha esta incompleto.",
+            return build_reject(
+                consumed=automaton.consumed,
+                message="El dia de la fecha esta incompleto.",
+                trace=automaton.trace,
             )
 
         # AFTER_DAY exige el separador antes de iniciar el mes.
@@ -131,9 +96,10 @@ def validate_date(text: str) -> ValidationResult:
                 continue
 
             automaton.record(symbol, "REJECT", "Despues del dia debe aparecer '/'.")
-            return _rejected_date_result(
-                automaton,
-                "La fecha no tiene el separador correcto despues del dia.",
+            return build_reject(
+                consumed=automaton.consumed,
+                message="La fecha no tiene el separador correcto despues del dia.",
+                trace=automaton.trace,
             )
 
         # MONTH_FIRST registra el primer digito del mes.
@@ -144,9 +110,10 @@ def validate_date(text: str) -> ValidationResult:
                 continue
 
             automaton.record(symbol, "REJECT", "El mes debe iniciar con un digito.")
-            return _rejected_date_result(
-                automaton,
-                "El mes de la fecha inicia de forma invalida.",
+            return build_reject(
+                consumed=automaton.consumed,
+                message="El mes de la fecha inicia de forma invalida.",
+                trace=automaton.trace,
             )
 
         # MONTH_SECOND obliga a completar el segundo digito del mes.
@@ -157,9 +124,10 @@ def validate_date(text: str) -> ValidationResult:
                 continue
 
             automaton.record(symbol, "REJECT", "El mes debe tener exactamente dos digitos.")
-            return _rejected_date_result(
-                automaton,
-                "El mes de la fecha esta incompleto.",
+            return build_reject(
+                consumed=automaton.consumed,
+                message="El mes de la fecha esta incompleto.",
+                trace=automaton.trace,
             )
 
         # AFTER_MONTH exige el separador antes del anio.
@@ -170,9 +138,10 @@ def validate_date(text: str) -> ValidationResult:
                 continue
 
             automaton.record(symbol, "REJECT", "Despues del mes debe aparecer '/'.")
-            return _rejected_date_result(
-                automaton,
-                "La fecha no tiene el separador correcto despues del mes.",
+            return build_reject(
+                consumed=automaton.consumed,
+                message="La fecha no tiene el separador correcto despues del mes.",
+                trace=automaton.trace,
             )
 
         # YEAR_1, YEAR_2, YEAR_3 y YEAR_4 fuerzan cuatro digitos para el anio.
@@ -183,9 +152,10 @@ def validate_date(text: str) -> ValidationResult:
                 continue
 
             automaton.record(symbol, "REJECT", "El anio debe iniciar con un digito.")
-            return _rejected_date_result(
-                automaton,
-                "El anio de la fecha inicia de forma invalida.",
+            return build_reject(
+                consumed=automaton.consumed,
+                message="El anio de la fecha inicia de forma invalida.",
+                trace=automaton.trace,
             )
 
         if automaton.state == "YEAR_2":
@@ -195,9 +165,10 @@ def validate_date(text: str) -> ValidationResult:
                 continue
 
             automaton.record(symbol, "REJECT", "El anio debe tener cuatro digitos.")
-            return _rejected_date_result(
-                automaton,
-                "El anio de la fecha esta incompleto.",
+            return build_reject(
+                consumed=automaton.consumed,
+                message="El anio de la fecha esta incompleto.",
+                trace=automaton.trace,
             )
 
         if automaton.state == "YEAR_3":
@@ -207,9 +178,10 @@ def validate_date(text: str) -> ValidationResult:
                 continue
 
             automaton.record(symbol, "REJECT", "El anio debe tener cuatro digitos.")
-            return _rejected_date_result(
-                automaton,
-                "El anio de la fecha esta incompleto.",
+            return build_reject(
+                consumed=automaton.consumed,
+                message="El anio de la fecha esta incompleto.",
+                trace=automaton.trace,
             )
 
         if automaton.state == "YEAR_4":
@@ -219,25 +191,28 @@ def validate_date(text: str) -> ValidationResult:
                 continue
 
             automaton.record(symbol, "REJECT", "El anio debe terminar con un digito.")
-            return _rejected_date_result(
-                automaton,
-                "El anio de la fecha esta incompleto.",
+            return build_reject(
+                consumed=automaton.consumed,
+                message="El anio de la fecha esta incompleto.",
+                trace=automaton.trace,
             )
 
         if automaton.state == "DATE_COMPLETE":
             automaton.record(symbol, "REJECT", "La fecha no debe tener simbolos extra al final.")
-            return _rejected_date_result(
-                automaton,
-                "La fecha contiene simbolos adicionales al final.",
-                normalized_symbols,
+            return build_reject(
+                consumed=automaton.consumed,
+                message="La fecha contiene simbolos adicionales al final.",
+                trace=automaton.trace,
+                normalized="".join(normalized_symbols),
             )
 
     if automaton.state != "DATE_COMPLETE":
         automaton.finish("REJECT", "La cadena termina antes de completar DD/MM/YYYY.")
-        return _rejected_date_result(
-            automaton,
-            "La fecha termina antes de completar su estructura.",
-            normalized_symbols,
+        return build_reject(
+            consumed=automaton.consumed,
+            message="La fecha termina antes de completar su estructura.",
+            trace=automaton.trace,
+            normalized="".join(normalized_symbols),
         )
 
     # A partir de aqui ya no se valida la forma, sino el significado del calendario.
@@ -247,18 +222,20 @@ def validate_date(text: str) -> ValidationResult:
 
     if month < 1 or month > 12:
         automaton.finish("REJECT", f"El mes {month} esta fuera del rango 1-12.")
-        return _rejected_date_result(
-            automaton,
-            "El mes de la fecha es invalido.",
-            normalized_symbols,
+        return build_reject(
+            consumed=automaton.consumed,
+            message="El mes de la fecha es invalido.",
+            trace=automaton.trace,
+            normalized="".join(normalized_symbols),
         )
 
     if year < MIN_YEAR or year > MAX_YEAR:
         automaton.finish("REJECT", f"El anio {year} esta fuera del rango {MIN_YEAR}-{MAX_YEAR}.")
-        return _rejected_date_result(
-            automaton,
-            "El anio de la fecha esta fuera del rango permitido.",
-            normalized_symbols,
+        return build_reject(
+            consumed=automaton.consumed,
+            message="El anio de la fecha esta fuera del rango permitido.",
+            trace=automaton.trace,
+            normalized="".join(normalized_symbols),
         )
 
     # El maximo de dias depende del mes y del caso especial de febrero bisiesto.
@@ -268,11 +245,17 @@ def validate_date(text: str) -> ValidationResult:
             "REJECT",
             f"El dia {day} excede el maximo permitido {max_day} para el mes {month}.",
         )
-        return _rejected_date_result(
-            automaton,
-            "El dia de la fecha es invalido para el mes dado.",
-            normalized_symbols,
+        return build_reject(
+            consumed=automaton.consumed,
+            message="El dia de la fecha es invalido para el mes dado.",
+            trace=automaton.trace,
+            normalized="".join(normalized_symbols),
         )
 
     automaton.finish("ACCEPT", "Fecha valida con formato DD/MM/YYYY y rangos correctos.")
-    return _accepted_date_result(automaton, normalized_symbols)
+    return build_accept(
+        consumed=automaton.consumed,
+        message="Fecha valida.",
+        trace=automaton.trace,
+        normalized="".join(normalized_symbols),
+    )

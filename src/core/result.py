@@ -2,6 +2,9 @@
 
 Responsabilidad unica: exponer ValidationResult con factory methods
 accept() y reject(). Ningun validador construye el resultado manualmente.
+
+Incluye helpers compartidos (build_accept, build_reject, reject_empty)
+para evitar duplicar wrappers identicos en cada validador.
 """
 
 from dataclasses import dataclass, field
@@ -56,3 +59,51 @@ class ValidationResult:
             trace=trace,
             normalized=normalized,
         )
+
+
+# ── Helpers compartidos entre validadores ─────────────────────────────
+
+
+def build_accept(
+    *,
+    consumed: int,
+    message: str,
+    trace: list[str],
+    normalized: str = "",
+) -> ValidationResult:
+    """Construye un resultado de aceptacion (wrapper conciso para los validadores)."""
+    return ValidationResult.accept(
+        consumed=consumed,
+        message=message,
+        trace=trace,
+        normalized=normalized,
+    )
+
+
+def build_reject(
+    *,
+    consumed: int,
+    message: str,
+    trace: list[str],
+    normalized: str = "",
+) -> ValidationResult:
+    """Construye un resultado de rechazo (wrapper conciso para los validadores)."""
+    return ValidationResult.reject(
+        consumed=consumed,
+        message=message,
+        trace=trace,
+        normalized=normalized,
+    )
+
+
+def reject_empty(state_name: str = "START") -> ValidationResult:
+    """Construye un resultado de rechazo para cadena vacia.
+
+    Args:
+        state_name: nombre del estado inicial del automata (para la traza).
+    """
+    return ValidationResult.reject(
+        consumed=0,
+        message="La cadena esta vacia.",
+        trace=[f"{state_name}: no hay simbolos para procesar."],
+    )

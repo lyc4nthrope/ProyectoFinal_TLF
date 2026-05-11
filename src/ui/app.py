@@ -1,13 +1,14 @@
-"""Aplicacion Tkinter con buscador de patrones y formularios validados.
+"""Aplicacion Tkinter con pestanas para Parte A y Parte B.
 
-Arquitectura: FormApp compone dos componentes independientes:
-  - ScanSection: busqueda de patrones en texto libre (Parte A)
-  - FormSection: formularios con validacion en tiempo real (Parte B)
+Arquitectura: FormApp usa un ttk.Notebook con dos pestanas:
+  - Pestana "Parte A": ScanSection — busqueda de patrones en texto libre
+  - Pestana "Parte B": FormSection — formularios con validacion en tiempo real
 
 Cada componente es autonomo: maneja su propia UI y eventos.
 """
 
 from collections.abc import Callable
+from typing import NamedTuple
 from tkinter import (
     Canvas,
     Frame,
@@ -39,17 +40,25 @@ from src.patterns.phone_validator import validate_phone
 from src.patterns.plate_validator import validate_plate
 from src.patterns.url_validator import validate_url
 
+
+class FieldConfig(NamedTuple):
+    """Configuracion de un campo del formulario de validacion."""
+
+    label: str
+    key: str
+    validator: Callable[[str], ValidationResult]
+    show: str  # "*" oculta caracteres (para contrasena), "" = visible
+
+
 # Configuracion de campos del formulario.
-# Cada entrada: (etiqueta, clave, validador, show)
-# show="*" oculta los caracteres (para contrasena).
-FIELDS_CONFIG: list[tuple[str, str, Callable[[str], ValidationResult], str]] = [
-    ("Telefono:",             "phone",    validate_phone,    ""),
-    ("Correo:",               "email",    validate_email,    ""),
-    ("Fecha (DD/MM/AAAA):",   "date",     validate_date,     ""),
-    ("Placa (ej. ABC123):",   "plate",    validate_plate,    ""),
-    ("Contrasena:",           "password", validate_password, "*"),
-    ("NIT (NNN.NNN.NNN-D):", "nit",      validate_nit,      ""),
-    ("URL:",                  "url",      validate_url,      ""),
+FIELDS_CONFIG: list[FieldConfig] = [
+    FieldConfig("Telefono:",             "phone",    validate_phone,    ""),
+    FieldConfig("Correo:",               "email",    validate_email,    ""),
+    FieldConfig("Fecha (DD/MM/AAAA):",   "date",     validate_date,     ""),
+    FieldConfig("Placa (ej. ABC123):",   "plate",    validate_plate,    ""),
+    FieldConfig("Contrasena:",           "password", validate_password, "*"),
+    FieldConfig("NIT (NNN.NNN.NNN-D):", "nit",      validate_nit,      ""),
+    FieldConfig("URL:",                  "url",      validate_url,      ""),
 ]
 
 WINDOW_WIDTH = 760
@@ -62,13 +71,13 @@ WINDOW_HEIGHT = 720
 class ScanSection:
     """Seccion de busqueda de patrones en texto libre (Parte A)."""
 
-    def __init__(self, parent: Frame) -> None:
+    def __init__(self, parent: ttk.Frame) -> None:
         self.parent = parent
         self._build()
 
     def _build(self) -> None:
-        frame = ttk.LabelFrame(self.parent, text="Buscador de patrones (Parte A)", padding=8)
-        frame.pack(fill="x", padx=10, pady=(10, 0))
+        frame = ttk.Frame(self.parent)
+        frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
 
         Label(frame, text="Pega o escribe un texto y presiona Escanear:").pack(anchor="w")
 
@@ -176,14 +185,14 @@ class ScanSection:
 class FormSection:
     """Seccion de formularios con validacion en tiempo real (Parte B)."""
 
-    def __init__(self, parent: Frame) -> None:
+    def __init__(self, parent: ttk.Frame) -> None:
         self.parent = parent
         self.fields: list[ValidatedField] = []
         self._build()
 
     def _build(self) -> None:
-        frame = ttk.LabelFrame(self.parent, text="Validacion de formularios (Parte B)", padding=8)
-        frame.pack(fill=BOTH, expand=True, padx=10, pady=(0, 10))
+        frame = ttk.Frame(self.parent)
+        frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
 
         # Canvas + Scrollbar para contenido desplazable
         canvas = Canvas(frame, highlightthickness=0)
@@ -261,10 +270,10 @@ class FormSection:
         """
         results: list[tuple[str, bool, str]] = []
 
-        for field, (_label, key, _validator, _show) in zip(self.fields, FIELDS_CONFIG):
+        for field, config in zip(self.fields, FIELDS_CONFIG):
             is_empty = not field.value
             result = field.last_result
-            msg = format_field_message(key, result, is_empty)
+            msg = format_field_message(config.key, result, is_empty)
 
             if is_empty:
                 results.append((key, False, msg))
@@ -307,7 +316,7 @@ class FormSection:
 
 
 class FormApp:
-    """Ventana principal que compone ScanSection + FormSection."""
+    """Ventana principal con pestanas para Parte A y Parte B."""
 
     def __init__(self) -> None:
         self.root = Tk()
@@ -319,15 +328,17 @@ class FormApp:
         style = ttk.Style(self.root)
         style.theme_use("clam")
 
-        # Separador entre secciones
-        self._build_separator()
+        # ── Pestanas ───────────────────────────────────────────
+        notebook = ttk.Notebook(self.root)
+        notebook.pack(fill=BOTH, expand=True, padx=6, pady=6)
 
-        ScanSection(self.root)
-        FormSection(self.root)
+        tab_a = ttk.Frame(notebook)
+        notebook.add(tab_a, text="Buscador de patrones (Parte A)")
+        ScanSection(tab_a)
 
-    @staticmethod
-    def _build_separator() -> None:
-        ttk.Separator(orient="horizontal").pack(fill="x", padx=10, pady=6)
+        tab_b = ttk.Frame(notebook)
+        notebook.add(tab_b, text="Validacion de formularios (Parte B)")
+        FormSection(tab_b)
 
     def run(self) -> None:
         self.root.mainloop()

@@ -6,7 +6,7 @@ y verificar TLD con al menos 2 letras al cierre. Sin logica de UI.
 """
 
 from src.core.automaton import TraceableAutomaton
-from src.core.result import ValidationResult
+from src.core.result import ValidationResult, build_accept, build_reject, reject_empty
 from src.core.symbol_classifier import is_alphanumeric, is_letter
 
 MIN_TLD_LETTERS = 2
@@ -36,39 +36,6 @@ def _is_domain_hyphen(symbol: str) -> bool:
     return symbol == "-"
 
 
-def _accepted_email_result(
-    automaton: TraceableAutomaton,
-    normalized_symbols: list[str],
-) -> ValidationResult:
-    """Normaliza la salida aceptada del correo."""
-
-    return ValidationResult.accept(
-        consumed=automaton.consumed,
-        message="Correo valido.",
-        trace=automaton.trace,
-        normalized="".join(normalized_symbols),
-    )
-
-
-def _rejected_email_result(
-    automaton: TraceableAutomaton,
-    message: str,
-    normalized_symbols: list[str] | None = None,
-) -> ValidationResult:
-    """Centraliza la salida rechazada del correo."""
-
-    normalized = ""
-    if normalized_symbols is not None:
-        normalized = "".join(normalized_symbols)
-
-    return ValidationResult.reject(
-        consumed=automaton.consumed,
-        message=message,
-        trace=automaton.trace,
-        normalized=normalized,
-    )
-
-
 def validate_email(text: str) -> ValidationResult:
     """Valida correos con un automata explicable y restricciones controladas.
 
@@ -90,11 +57,7 @@ def validate_email(text: str) -> ValidationResult:
     tld_letters = 0
 
     if not text:
-        return ValidationResult.reject(
-            consumed=0,
-            message="La cadena esta vacia.",
-            trace=["START: no hay simbolos para procesar."],
-        )
+        return reject_empty("START")
 
     for index, symbol in enumerate(text):
         # START decide si la parte local arranca con un simbolo valido.
@@ -109,9 +72,10 @@ def validate_email(text: str) -> ValidationResult:
                 "REJECT",
                 "La parte local debe iniciar con letra o digito.",
             )
-            return _rejected_email_result(
-                automaton,
-                "La parte local del correo inicia de forma invalida.",
+            return build_reject(
+                consumed=automaton.consumed,
+                message="La parte local del correo inicia de forma invalida.",
+                trace=automaton.trace,
             )
 
         # LOCAL concentra la lectura normal antes de llegar al simbolo '@'.
@@ -145,9 +109,10 @@ def validate_email(text: str) -> ValidationResult:
                 "REJECT",
                 "Aparece un simbolo no permitido en la parte local.",
             )
-            return _rejected_email_result(
-                automaton,
-                "La parte local del correo contiene simbolos no permitidos.",
+            return build_reject(
+                consumed=automaton.consumed,
+                message="La parte local del correo contiene simbolos no permitidos.",
+                trace=automaton.trace,
             )
 
         # LOCAL_SEPARATOR obliga a retomar la parte local con letra o digito.
@@ -166,9 +131,10 @@ def validate_email(text: str) -> ValidationResult:
                 "REJECT",
                 "La parte local no puede terminar ni repetir separadores.",
             )
-            return _rejected_email_result(
-                automaton,
-                "La parte local del correo tiene separadores mal ubicados.",
+            return build_reject(
+                consumed=automaton.consumed,
+                message="La parte local del correo tiene separadores mal ubicados.",
+                trace=automaton.trace,
             )
 
         # AFTER_AT valida el inicio formal de la primera etiqueta del dominio.
@@ -188,9 +154,10 @@ def validate_email(text: str) -> ValidationResult:
                 "REJECT",
                 "Despues de '@' debe empezar una etiqueta valida del dominio.",
             )
-            return _rejected_email_result(
-                automaton,
-                "El dominio del correo inicia de forma invalida.",
+            return build_reject(
+                consumed=automaton.consumed,
+                message="El dominio del correo inicia de forma invalida.",
+                trace=automaton.trace,
             )
 
         # DOMAIN procesa letras y digitos normales dentro de cada etiqueta.
@@ -227,9 +194,10 @@ def validate_email(text: str) -> ValidationResult:
                 "REJECT",
                 "Aparece un simbolo no permitido en el dominio.",
             )
-            return _rejected_email_result(
-                automaton,
-                "El dominio del correo contiene simbolos no permitidos.",
+            return build_reject(
+                consumed=automaton.consumed,
+                message="El dominio del correo contiene simbolos no permitidos.",
+                trace=automaton.trace,
             )
 
         # DOMAIN_HYPHEN evita que el guion cierre una etiqueta del dominio.
@@ -249,9 +217,10 @@ def validate_email(text: str) -> ValidationResult:
                 "REJECT",
                 "El guion del dominio no puede quedar al final de una etiqueta.",
             )
-            return _rejected_email_result(
-                automaton,
-                "El dominio del correo tiene un guion mal ubicado.",
+            return build_reject(
+                consumed=automaton.consumed,
+                message="El dominio del correo tiene un guion mal ubicado.",
+                trace=automaton.trace,
             )
 
         # AFTER_DOMAIN_DOT obliga a que cada nueva etiqueta del dominio no quede vacia.
@@ -271,34 +240,38 @@ def validate_email(text: str) -> ValidationResult:
                 "REJECT",
                 "Despues del punto del dominio debe venir una nueva etiqueta.",
             )
-            return _rejected_email_result(
-                automaton,
-                "El dominio del correo tiene etiquetas vacias.",
+            return build_reject(
+                consumed=automaton.consumed,
+                message="El dominio del correo tiene etiquetas vacias.",
+                trace=automaton.trace,
             )
 
     # El cierre exige dominio con punto y una terminacion alfabetica suficiente.
     if not saw_at_symbol:
         automaton.finish("REJECT", "No aparecio el separador obligatorio '@'.")
-        return _rejected_email_result(
-            automaton,
-            "El correo no contiene el simbolo '@'.",
-            normalized_symbols,
+        return build_reject(
+            consumed=automaton.consumed,
+            message="El correo no contiene el simbolo '@'.",
+            trace=automaton.trace,
+            normalized="".join(normalized_symbols),
         )
 
     if automaton.state in {"AFTER_AT", "AFTER_DOMAIN_DOT", "DOMAIN_HYPHEN", "LOCAL_SEPARATOR"}:
         automaton.finish("REJECT", "La cadena termina en un estado no aceptable.")
-        return _rejected_email_result(
-            automaton,
-            "El correo termina en una estructura incompleta.",
-            normalized_symbols,
+        return build_reject(
+            consumed=automaton.consumed,
+            message="El correo termina en una estructura incompleta.",
+            trace=automaton.trace,
+            normalized="".join(normalized_symbols),
         )
 
     if not saw_domain_dot:
         automaton.finish("REJECT", "El dominio no contiene el punto obligatorio.")
-        return _rejected_email_result(
-            automaton,
-            "El dominio del correo debe contener al menos un punto.",
-            normalized_symbols,
+        return build_reject(
+            consumed=automaton.consumed,
+            message="El dominio del correo debe contener al menos un punto.",
+            trace=automaton.trace,
+            normalized="".join(normalized_symbols),
         )
 
     if tld_letters < MIN_TLD_LETTERS:
@@ -306,11 +279,17 @@ def validate_email(text: str) -> ValidationResult:
             "REJECT",
             f"La ultima etiqueta del dominio debe terminar con al menos {MIN_TLD_LETTERS} letras.",
         )
-        return _rejected_email_result(
-            automaton,
-            "La terminacion del dominio del correo es invalida.",
-            normalized_symbols,
+        return build_reject(
+            consumed=automaton.consumed,
+            message="La terminacion del dominio del correo es invalida.",
+            trace=automaton.trace,
+            normalized="".join(normalized_symbols),
         )
 
     automaton.finish("ACCEPT", "Correo valido con estructura local y dominio correctos.")
-    return _accepted_email_result(automaton, normalized_symbols)
+    return build_accept(
+        consumed=automaton.consumed,
+        message="Correo valido.",
+        trace=automaton.trace,
+        normalized="".join(normalized_symbols),
+    )

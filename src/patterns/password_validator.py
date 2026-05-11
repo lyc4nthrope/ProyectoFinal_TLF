@@ -18,7 +18,7 @@ No se integra al scanner — solo uso en formularios interactivos (Parte B).
 from __future__ import annotations
 
 from src.core.automaton import TraceableAutomaton
-from src.core.result import ValidationResult
+from src.core.result import ValidationResult, reject_empty
 from src.core.symbol_classifier import is_digit, is_lower_letter, is_upper_letter
 
 SPECIAL_SYMBOLS: frozenset[str] = frozenset("!@#$%&*-_")
@@ -98,11 +98,7 @@ def validate_password(text: str) -> ValidationResult:
     has_special = False
 
     if not text:
-        return ValidationResult.reject(
-            consumed=0,
-            message="La cadena esta vacia.",
-            trace=["START: no hay simbolos para procesar."],
-        )
+        return reject_empty("START")
 
     for symbol in text:
         new_flag = False
