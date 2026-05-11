@@ -14,9 +14,9 @@ Descarga el ejecutable para tu sistema operativo desde
 
 | Sistema | Archivo |
 |---------|---------|
-| 🐧 Linux | `tlf-linux` |
-| 🍎 macOS | `tlf-macos` |
-| 🪟 Windows | `tlf-windows.exe` |
+|  Linux  | `tlf-linux` |
+|  macOS  | `tlf-macos` |
+|  Windows| `tlf-windows.exe` |
 
 ```bash
 # Linux / macOS
