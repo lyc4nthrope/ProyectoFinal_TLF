@@ -81,7 +81,7 @@ librerías de expresiones regulares predefinidas.
 | 📧 Correo | `local@dominio.tld` | ✅ | ✅ |
 | 📅 Fecha | `DD/MM/AAAA` (1900-2100) | ✅ | ✅ |
 | 🚗 Placa | `LLLDDD` (carro) / `LLLDDDL` (moto) | ✅ | ✅ |
-| 🌐 URL | `http(s)://dominio.tld[/ruta]` | ✅ | — |
+| 🌐 URL | `http(s)://dominio.tld[/ruta]` | ✅ | ✅ |
 | 📋 NIT | `NNN.NNN.NNN-D` (colombiano) | ✅ | ✅ |
 | 🔒 Contraseña | 8+ chars, mayúscula, minúscula, dígito, símbolo | — | ✅ |
 

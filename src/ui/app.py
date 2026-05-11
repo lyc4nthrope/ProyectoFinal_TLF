@@ -37,6 +37,7 @@ from src.patterns.nit_validator import validate_nit
 from src.patterns.password_validator import validate_password
 from src.patterns.phone_validator import validate_phone
 from src.patterns.plate_validator import validate_plate
+from src.patterns.url_validator import validate_url
 
 # Configuracion de campos del formulario.
 # Cada entrada: (etiqueta, clave, validador, show)
@@ -48,6 +49,7 @@ FIELDS_CONFIG: list[tuple[str, str, Callable[[str], ValidationResult], str]] = [
     ("Placa (ej. ABC123):",   "plate",    validate_plate,    ""),
     ("Contrasena:",           "password", validate_password, "*"),
     ("NIT (NNN.NNN.NNN-D):", "nit",      validate_nit,      ""),
+    ("URL:",                  "url",      validate_url,      ""),
 ]
 
 WINDOW_WIDTH = 760

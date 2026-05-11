@@ -77,6 +77,16 @@ FIELD_INFO: dict[str, dict[str, str]] = {
         "invalid": "NIT invalido. Formato: NNN.NNN.NNN-D.",
         "empty": "Escribe el NIT",
     },
+    "url": {
+        "label": "URL",
+        "emoji": "\U0001F310",  # 🌐
+        "placeholder": "https://ejemplo.com",
+        "tooltip": "http(s)://dominio.tld[/ruta]. Ej: https://github.com",
+        "color": "#8E44AD",  # purpura
+        "accepted": "URL valida",
+        "invalid": "URL invalida. Debe incluir http:// o https://",
+        "empty": "Escribe una URL",
+    },
 }
 
 
