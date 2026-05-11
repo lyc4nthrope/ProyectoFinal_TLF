@@ -8,6 +8,7 @@ y retornar lista de PatternMatch. No valida — delega a cada AFD.
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from src.core.result import ValidationResult
 from src.core.symbol_classifier import is_alphanumeric, is_digit, is_letter
 from src.patterns.date_validator import validate_date
 from src.patterns.email_validator import validate_email
@@ -31,6 +32,7 @@ class PatternMatch:
     end: int
     raw: str
     normalized: str
+    result: ValidationResult
 
 
 def _is_email_char(symbol: str) -> bool:
@@ -81,6 +83,7 @@ def _try_date(text: str, pos: int) -> PatternMatch | None:
         end=pos + DATE_LENGTH,
         raw=candidate,
         normalized=result.normalized,
+        result=result,
     )
 
 
@@ -103,6 +106,7 @@ def _try_email(text: str, pos: int) -> PatternMatch | None:
         end=pos + len(candidate),
         raw=candidate,
         normalized=result.normalized,
+        result=result,
     )
 
 
@@ -124,6 +128,7 @@ def _try_phone(text: str, pos: int) -> PatternMatch | None:
         end=pos + len(candidate),
         raw=candidate,
         normalized=result.normalized,
+        result=result,
     )
 
 
@@ -146,6 +151,7 @@ def _try_url(text: str, pos: int) -> PatternMatch | None:
         end=pos + len(candidate),
         raw=candidate,
         normalized=result.normalized,
+        result=result,
     )
 
 
@@ -168,6 +174,7 @@ def _try_nit(text: str, pos: int) -> PatternMatch | None:
         end=pos + len(candidate),
         raw=candidate,
         normalized=result.normalized,
+        result=result,
     )
 
 
@@ -189,6 +196,7 @@ def _try_plate(text: str, pos: int) -> PatternMatch | None:
         end=pos + len(candidate),
         raw=candidate,
         normalized=result.normalized,
+        result=result,
     )
 
 
