@@ -112,6 +112,15 @@ class PlateValidatorTests(unittest.TestCase):
         self.assertFalse(result.accepted)
         self.assertIn("incompleta", result.message.lower())
 
+    # -- Test placa moto con guion despues de digitos (Fase 6) --
+
+    def test_accepts_moto_plate_hyphen_after_digits(self) -> None:
+        """Moto con guion entre digitos y letra: ABC123-A."""
+        result = validate_plate("ABC123-A")
+
+        self.assertTrue(result.accepted)
+        self.assertEqual(result.normalized, "ABC123A")
+
 
 if __name__ == "__main__":
     unittest.main()

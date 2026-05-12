@@ -48,6 +48,40 @@ class EmailValidatorTests(unittest.TestCase):
         self.assertFalse(result.accepted)
         self.assertIn("guion mal ubicado", result.message.lower())
 
+    # -- Nuevas reglas (Fase 5) --
+
+    def test_accepts_plus_subaddressing(self) -> None:
+        """+ en parte local (subaddressing RFC 5233) debe ser aceptado."""
+        result = validate_email("user+tag@example.com")
+
+        self.assertTrue(result.accepted)
+        self.assertEqual(result.normalized, "user+tag@example.com")
+
+    def test_rejects_email_too_long(self) -> None:
+        """Correo que excede MAX_EMAIL_LENGTH debe ser rechazado."""
+        local = "a" * 200
+        domain = "b" * 50
+        result = validate_email(f"{local}@{domain}.com")
+
+        self.assertFalse(result.accepted)
+        self.assertIn("longitud maxima", result.message.lower())
+
+    def test_rejects_local_part_too_long(self) -> None:
+        """Parte local que excede MAX_LOCAL_LENGTH debe ser rechazada."""
+        local = "a" * 65
+        result = validate_email(f"{local}@example.com")
+
+        self.assertFalse(result.accepted)
+        self.assertIn("parte local", result.message.lower())
+
+    def test_rejects_domain_label_too_long(self) -> None:
+        """Etiqueta de dominio que excede MAX_LABEL_LENGTH debe ser rechazada."""
+        label = "a" * 64
+        result = validate_email(f"user@{label}.com")
+
+        self.assertFalse(result.accepted)
+        self.assertIn("dominio", result.message.lower())
+
 
 if __name__ == "__main__":
     unittest.main()

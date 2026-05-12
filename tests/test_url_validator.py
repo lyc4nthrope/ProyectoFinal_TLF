@@ -101,6 +101,32 @@ class UrlValidatorTests(unittest.TestCase):
         result = validate_url("https://example.com/page?a=1&b=2")
         self.assertTrue(result.accepted)
 
+    # -- Nuevas reglas de TLD (Fase 2) --
+
+    def test_rejects_tld_single_char(self) -> None:
+        """TLD de un solo caracter debe ser rechazado."""
+        result = validate_url("http://a.b")
+        self.assertFalse(result.accepted)
+        self.assertIn("tld", result.message.lower())
+
+    def test_rejects_tld_numeric(self) -> None:
+        """TLD completamente numerico debe ser rechazado."""
+        result = validate_url("http://example.123")
+        self.assertFalse(result.accepted)
+        self.assertIn("tld", result.message.lower())
+
+    def test_rejects_url_too_long(self) -> None:
+        """URL que excede MAX_URL_LENGTH debe ser rechazada."""
+        domain = "a" * 2500
+        result = validate_url(f"http://{domain}.com")
+        self.assertFalse(result.accepted)
+        self.assertIn("longitud maxima", result.message.lower())
+
+    def test_accepts_tld_with_letters_and_digits(self) -> None:
+        """TLD mixto letras+digitos debe ser aceptado si tiene al menos una letra."""
+        result = validate_url("http://example.c1")
+        self.assertTrue(result.accepted)
+
 
 if __name__ == "__main__":
     unittest.main()

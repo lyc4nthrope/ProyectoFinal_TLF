@@ -127,17 +127,17 @@ class TextScannerTests(unittest.TestCase):
         self.assertEqual(matches[0].normalized, "http://example.com/archivo.pdf")
 
     def test_finds_nit_in_text(self) -> None:
-        matches = scan_text("La empresa con NIT 900.123.456-7 esta registrada.")
+        matches = scan_text("La empresa con NIT 900.123.456-8 esta registrada.")
 
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0].pattern, "nit")
-        self.assertEqual(matches[0].raw, "900.123.456-7")
+        self.assertEqual(matches[0].raw, "900.123.456-8")
 
     def test_nit_normalized_only_digits(self) -> None:
-        matches = scan_text("NIT: 800.100.200-5.")
+        matches = scan_text("NIT: 800.100.200-8.")
 
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].normalized, "8001002005")
+        self.assertEqual(matches[0].normalized, "8001002008")
 
     def test_invalid_url_not_reported(self) -> None:
         matches = scan_text("El protocolo ftp://example.com no es valido aqui.")

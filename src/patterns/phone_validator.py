@@ -1,16 +1,20 @@
-"""AFD para numeros telefonicos (10-13 digitos, prefijo + opcional).
+"""AFD para numeros telefonicos con deteccion dinamica de codigo de pais.
 
 Responsabilidad unica: recorrer char-by-char con estados START /
 AFTER_PLUS / IN_NUMBER / AFTER_SEPARATOR y validar cantidad de digitos
 reales al cierre. Sin logica de UI ni de scanner.
+
+Reglas de validacion:
+- Sin prefijo +: exactamente 10 digitos (numero local).
+- Con prefijo +: los ultimos 10 digitos son el numero local; el resto
+  es el codigo de pais (cualquier longitud >= 1).
 """
 
 from src.core.automaton import TraceableAutomaton
 from src.core.result import ValidationResult, build_accept, build_reject, reject_empty
 from src.core.symbol_classifier import is_digit
 
-MIN_DIGITS = 10
-MAX_DIGITS = 13
+LOCAL_DIGITS = 10
 
 
 def _is_phone_separator(symbol: str) -> bool:
@@ -32,13 +36,17 @@ def validate_phone(text: str) -> ValidationResult:
     - Puede iniciar con `+` una sola vez.
     - Solo se permiten digitos, espacio y guion.
     - No se permiten dos separadores consecutivos.
-    - Debe contener entre 10 y 13 digitos.
+    - Sin prefijo +: exactamente 10 digitos.
+    - Con prefijo +: los ultimos 10 digitos son el numero local.
     - No puede terminar en separador.
     """
 
     automaton = TraceableAutomaton(state="START")
     digits = 0
     normalized_digits: list[str] = []
+    has_plus = False
+    first_block_digits = 0  # digitos antes del primer separador (codigo de pais si hay +)
+    saw_separator = False
 
     if not text:
         return reject_empty("START")
@@ -47,11 +55,13 @@ def validate_phone(text: str) -> ValidationResult:
         # El estado START decide si la cadena entra como telefono local o internacional.
         if automaton.state == "START":
             if _is_plus(symbol):
+                has_plus = True
                 automaton.record(symbol, "AFTER_PLUS", "Se detecta prefijo internacional.")
                 continue
             if is_digit(symbol):
                 automaton.record(symbol, "IN_NUMBER", "Empieza la secuencia principal de digitos.")
                 digits += 1
+                first_block_digits += 1
                 normalized_digits.append(symbol)
                 continue
             automaton.record(symbol, "REJECT", "El telefono debe iniciar con '+' o un digito.")
@@ -62,6 +72,7 @@ def validate_phone(text: str) -> ValidationResult:
             if is_digit(symbol):
                 automaton.record(symbol, "IN_NUMBER", "Despues del prefijo solo se aceptan digitos.")
                 digits += 1
+                first_block_digits += 1  # primer bloque = codigo de pais
                 normalized_digits.append(symbol)
                 continue
             automaton.record(symbol, "REJECT", "Despues de '+' debe aparecer un digito.")
@@ -72,10 +83,13 @@ def validate_phone(text: str) -> ValidationResult:
             if is_digit(symbol):
                 automaton.stay(symbol, "Se acumula un nuevo digito del telefono.")
                 digits += 1
+                if not saw_separator:
+                    first_block_digits += 1
                 normalized_digits.append(symbol)
                 continue
 
             if _is_phone_separator(symbol):
+                saw_separator = True
                 automaton.record(
                     symbol,
                     "AFTER_SEPARATOR",
@@ -109,18 +123,78 @@ def validate_phone(text: str) -> ValidationResult:
             )
             return build_reject(consumed=automaton.consumed, message="El telefono tiene un bloque vacio despues de un separador.", trace=automaton.trace)
 
-    # La aceptacion final depende del total de digitos reales, no de la longitud cruda.
+    # ── Validacion al cierre ────────────────────────────────────────
     # AFTER_SEPARATOR al cierre = termina en separador — rechazo formal sin lookahead.
     if automaton.state == "AFTER_SEPARATOR":
         automaton.finish("REJECT", "La cadena termina en separador — estado no aceptable.")
         return build_reject(consumed=automaton.consumed, message="El telefono termina con separador.", trace=automaton.trace)
 
-    if digits < MIN_DIGITS or digits > MAX_DIGITS:
+    normalized = "".join(normalized_digits)
+
+    if has_plus:
+        if saw_separator:
+            # Hay separadores: el primer bloque es el codigo de pais,
+            # el resto son digitos locales.
+            local_digits = digits - first_block_digits
+            if local_digits != LOCAL_DIGITS:
+                automaton.finish(
+                    "REJECT",
+                    f"cantidad de digitos locales {local_digits} distinta de "
+                    f"{LOCAL_DIGITS} requeridos.",
+                )
+                return build_reject(
+                    consumed=automaton.consumed,
+                    message="La cantidad de digitos del telefono es invalida.",
+                    trace=automaton.trace,
+                    normalized=normalized,
+                )
+            country_code = normalized[:first_block_digits]
+            local_number = normalized[first_block_digits:]
+        else:
+            # Sin separadores: heuristico — ultimos 10 digitos son locales,
+            # el resto es codigo de pais.
+            if len(normalized) < LOCAL_DIGITS + 1:
+                automaton.finish(
+                    "REJECT",
+                    f"cantidad de digitos {len(normalized)} insuficiente: "
+                    f"se necesita al menos 1 de pais + {LOCAL_DIGITS} locales.",
+                )
+                return build_reject(
+                    consumed=automaton.consumed,
+                    message="La cantidad de digitos del telefono es invalida.",
+                    trace=automaton.trace,
+                    normalized=normalized,
+                )
+            country_code = normalized[:-LOCAL_DIGITS]
+            local_number = normalized[-LOCAL_DIGITS:]
+
+        automaton.finish(
+            "ACCEPT",
+            f"telefono valido: pais {country_code}, numero local {local_number}.",
+        )
+        return build_accept(
+            consumed=automaton.consumed,
+            message="Telefono valido.",
+            trace=automaton.trace,
+            normalized=normalized,
+        )
+
+    # Sin prefijo: exactamente LOCAL_DIGITS digitos.
+    if len(normalized) != LOCAL_DIGITS:
         automaton.finish(
             "REJECT",
-            f"cantidad de digitos {digits} fuera del rango {MIN_DIGITS}-{MAX_DIGITS}.",
+            f"cantidad de digitos {len(normalized)} distinta de {LOCAL_DIGITS} requeridos.",
         )
-        return build_reject(consumed=automaton.consumed, message="La cantidad de digitos del telefono es invalida.", trace=automaton.trace, normalized="".join(normalized_digits))
-
-    automaton.finish("ACCEPT", f"telefono valido con {digits} digitos.")
-    return build_accept(consumed=automaton.consumed, message="Telefono valido.", trace=automaton.trace, normalized="".join(normalized_digits))
+        return build_reject(
+            consumed=automaton.consumed,
+            message="La cantidad de digitos del telefono es invalida.",
+            trace=automaton.trace,
+            normalized=normalized,
+        )
+    automaton.finish("ACCEPT", f"telefono valido con {LOCAL_DIGITS} digitos.")
+    return build_accept(
+        consumed=automaton.consumed,
+        message="Telefono valido.",
+        trace=automaton.trace,
+        normalized=normalized,
+    )

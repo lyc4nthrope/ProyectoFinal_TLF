@@ -65,16 +65,24 @@ class PasswordValidatorTests(unittest.TestCase):
         self.assertIn("simbolo especial", result.message.lower())
 
     def test_rejects_invalid_symbol(self) -> None:
-        result = validate_password("Secure^1ab")
+        result = validate_password("Secure\\1ab")
 
         self.assertFalse(result.accepted)
-        self.assertIn("^", result.message)
+        self.assertIn("\\", result.message)
 
     def test_rejects_empty_string(self) -> None:
         result = validate_password("")
 
         self.assertFalse(result.accepted)
         self.assertIn("vacia", result.message.lower())
+
+    def test_rejects_too_long(self) -> None:
+        """Contrasena que excede MAX_LENGTH debe ser rechazada."""
+        long_pwd = "Abc@1" + "x" * 130
+        result = validate_password(long_pwd)
+
+        self.assertFalse(result.accepted)
+        self.assertIn("longitud maxima", result.message.lower())
 
     # --- Borde ---
 

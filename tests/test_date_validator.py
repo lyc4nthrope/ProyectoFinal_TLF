@@ -60,6 +60,43 @@ class DateValidatorTests(unittest.TestCase):
         self.assertFalse(result.accepted)
         self.assertIn("simbolos adicionales", result.message.lower())
 
+    # -- Tests complementarios (Fase 6) --
+
+    def test_rejects_day_zero(self) -> None:
+        result = validate_date("00/08/2024")
+
+        self.assertFalse(result.accepted)
+        self.assertIn("dia de la fecha es invalido", result.message.lower())
+
+    def test_rejects_month_thirteen(self) -> None:
+        result = validate_date("15/13/2024")
+
+        self.assertFalse(result.accepted)
+        self.assertIn("mes de la fecha es invalido", result.message.lower())
+
+    def test_rejects_century_non_leap_year(self) -> None:
+        """1900 no es bisiesto (divisible por 100 pero no por 400)."""
+        result = validate_date("29/02/1900")
+
+        self.assertFalse(result.accepted)
+        self.assertIn("dia de la fecha es invalido", result.message.lower())
+
+    def test_accepts_century_leap_year(self) -> None:
+        """2000 es bisiesto (divisible por 400)."""
+        result = validate_date("29/02/2000")
+
+        self.assertTrue(result.accepted)
+
+    def test_accepts_year_lower_bound(self) -> None:
+        result = validate_date("01/01/1900")
+
+        self.assertTrue(result.accepted)
+
+    def test_accepts_year_upper_bound(self) -> None:
+        result = validate_date("31/12/2100")
+
+        self.assertTrue(result.accepted)
+
 
 if __name__ == "__main__":
     unittest.main()

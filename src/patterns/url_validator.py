@@ -2,11 +2,20 @@
 
 Responsabilidad unica: recorrer char-by-char y decidir si la cadena es
 una URL valida con formato http(s)://dominio.tld[/ruta]. Sin UI ni scanner.
+
+Reglas de validacion:
+- Protocolo exactamente http o https (case-insensitive).
+- Separador obligatorio ://
+- Dominio con al menos un punto (ej: example.com).
+- TLD: al menos 2 caracteres, con al menos una letra.
+- Longitud maxima total de 2048 caracteres.
 """
 
 from src.core.automaton import TraceableAutomaton
 from src.core.result import ValidationResult, build_accept, build_reject, reject_empty
-from src.core.symbol_classifier import is_alphanumeric, is_digit
+from src.core.symbol_classifier import is_alphanumeric, is_letter
+
+MAX_URL_LENGTH = 2048
 
 
 def _is_url_path_char(symbol: str) -> bool:
@@ -15,6 +24,25 @@ def _is_url_path_char(symbol: str) -> bool:
     return is_alphanumeric(symbol) or symbol in {
         "/", "-", "_", ".", "?", "=", "&", "#", "~", "%", "+", "@", ":",
     }
+
+
+def _handle_tld_invalid(
+    tld_length: int,
+    tld_has_letter: bool,
+    automaton: TraceableAutomaton,
+    normalized: str,
+) -> ValidationResult:
+    """Registra y retorna un rechazo por TLD invalido (< 2 chars o sin letras)."""
+    automaton.finish(
+        "REJECT",
+        f"TLD invalido: longitud {tld_length}, tiene_letra={tld_has_letter}.",
+    )
+    return build_reject(
+        consumed=automaton.consumed,
+        message="El dominio de la URL tiene un TLD invalido.",
+        trace=automaton.trace,
+        normalized=normalized,
+    )
 
 
 def validate_url(text: str) -> ValidationResult:
@@ -28,12 +56,18 @@ def validate_url(text: str) -> ValidationResult:
     - La ruta es opcional; si aparece, puede contener caracteres URL validos.
     """
 
+    if len(text) > MAX_URL_LENGTH:
+        return build_reject(
+            consumed=0,
+            message=f"La URL excede la longitud maxima de {MAX_URL_LENGTH} caracteres.",
+            trace=[],
+        )
+
     automaton = TraceableAutomaton(state="START")
     normalized_symbols: list[str] = []
     saw_domain_dot = False
-
-    if not text:
-        return reject_empty("START")
+    tld_length = 0
+    tld_has_letter = False
 
     for symbol in text:
         if automaton.state == "START":
@@ -140,6 +174,8 @@ def validate_url(text: str) -> ValidationResult:
             if is_alphanumeric(symbol):
                 automaton.record(symbol, "DOMAIN", "Inicia la primera etiqueta del dominio.")
                 normalized_symbols.append(symbol)
+                tld_length = 1
+                tld_has_letter = is_letter(symbol)
                 continue
             automaton.record(symbol, "REJECT", "El dominio debe iniciar con letra o digito.")
             return build_reject(
@@ -152,6 +188,9 @@ def validate_url(text: str) -> ValidationResult:
             if is_alphanumeric(symbol):
                 automaton.stay(symbol, "Continua la etiqueta actual del dominio.")
                 normalized_symbols.append(symbol)
+                tld_length += 1
+                if is_letter(symbol):
+                    tld_has_letter = True
                 continue
             if symbol == "-":
                 automaton.record(symbol, "DOMAIN_HYPHEN", "Guion interno dentro de la etiqueta.")
@@ -196,6 +235,8 @@ def validate_url(text: str) -> ValidationResult:
                 saw_domain_dot = True
                 automaton.record(symbol, "DOMAIN", "Inicia una nueva etiqueta del dominio.")
                 normalized_symbols.append(symbol)
+                tld_length = 1
+                tld_has_letter = is_letter(symbol)
                 continue
             automaton.record(symbol, "REJECT", "Despues del punto debe iniciar una etiqueta valida.")
             return build_reject(
@@ -217,6 +258,10 @@ def validate_url(text: str) -> ValidationResult:
             )
 
     if automaton.state == "DOMAIN" and saw_domain_dot:
+        if tld_length < 2 or not tld_has_letter:
+            return _handle_tld_invalid(
+                tld_length, tld_has_letter, automaton, "".join(normalized_symbols),
+            )
         automaton.finish("ACCEPT", "URL valida con protocolo y dominio completos.")
         return build_accept(
             consumed=automaton.consumed,
@@ -226,6 +271,10 @@ def validate_url(text: str) -> ValidationResult:
         )
 
     if automaton.state == "PATH":
+        if tld_length < 2 or not tld_has_letter:
+            return _handle_tld_invalid(
+                tld_length, tld_has_letter, automaton, "".join(normalized_symbols),
+            )
         automaton.finish("ACCEPT", "URL valida con protocolo, dominio y ruta.")
         return build_accept(
             consumed=automaton.consumed,

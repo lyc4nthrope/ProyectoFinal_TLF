@@ -21,8 +21,11 @@ from src.core.automaton import TraceableAutomaton
 from src.core.result import ValidationResult, reject_empty
 from src.core.symbol_classifier import is_digit, is_lower_letter, is_upper_letter
 
-SPECIAL_SYMBOLS: frozenset[str] = frozenset("!@#$%&*-_")
+SPECIAL_SYMBOLS: frozenset[str] = frozenset(
+    "!@#$%&*-_^+=~()[]{}|;:,.<>?"
+)
 MIN_LENGTH = 8
+MAX_LENGTH = 128
 
 
 def _is_special(symbol: str) -> bool:
@@ -82,14 +85,22 @@ def validate_password(text: str) -> ValidationResult:
 
     Reglas:
     - Longitud minima de 8 caracteres.
+    - Longitud maxima de 128 caracteres.
     - Al menos una letra mayuscula (A-Z).
     - Al menos una letra minuscula (a-z).
     - Al menos un digito (0-9).
-    - Al menos un simbolo del conjunto: ! @ # $ % & * - _
+    - Al menos un simbolo del conjunto: ! @ # $ % & * - _ ^ + = ~ ( ) [ ] { } | ; : , . < > ?
     - Cualquier caracter fuera del alfabeto causa rechazo inmediato.
 
     La contrasena no genera valor normalizado por razon de privacidad.
     """
+
+    if len(text) > MAX_LENGTH:
+        return ValidationResult.reject(
+            consumed=0,
+            message=f"La contrasena excede la longitud maxima de {MAX_LENGTH} caracteres.",
+            trace=[],
+        )
 
     automaton = TraceableAutomaton(state="SCANNING")
     has_upper = False

@@ -1,37 +1,57 @@
 """AFD para Numeros de Identificacion Tributaria (NIT) colombianos.
 
 Responsabilidad unica: recorrer char-by-char y decidir si la cadena es
-un NIT valido con formato NNN.NNN.NNN-D. Sin logica de UI ni de scanner.
+un NIT valido con formato NNN.NNN.NNN-D (9 digitos) o N.NNN.NNN.NNN-D
+(10 digitos), mas verificacion de digito de control modulo 11 (DIAN).
 
-Formato: tres grupos de tres digitos separados por punto, seguidos de
-guion y un digito verificador. Ejemplo: 900.123.456-7.
+Formatos aceptados:
+  - 9 digitos:  NNN.NNN.NNN-D   (personas juridicas)
+  - 10 digitos: N.NNN.NNN.NNN-D (personas naturales)
 """
 
 from src.core.automaton import TraceableAutomaton
 from src.core.result import ValidationResult, build_accept, build_reject, reject_empty
 from src.core.symbol_classifier import is_digit
 
-# ── Estados del automata ──────────────────────────────────────────────
-# N1_BLOCK1/N2_BLOCK1/N3_BLOCK1 = digitos del primer grupo (NNN.)
-# DOT1                           = primer separador
-# N1_BLOCK2/N2_BLOCK2/N3_BLOCK2 = digitos del segundo grupo (.NNN.)
-# DOT2                           = segundo separador
-# N1_BLOCK3/N2_BLOCK3/N3_BLOCK3 = digitos del tercer grupo (.NNN-)
-# HYPHEN                         = separador antes del digito verificador
-# CHECK                          = digito verificador
+# Pesos para el calculo del digito verificador modulo 11 (DIAN).
+# Se aplican de derecha a izquierda sobre los digitos base.
+_CHECK_WEIGHTS = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71]
+
+# Estructuras de bloques validas.
+_VALID_STRUCTURES = [
+    [3, 3, 3],        # 9 digitos (personas juridicas)
+    [1, 3, 3, 3],     # 10 digitos (personas naturales)
+]
+
+
+def _calc_check_digit(base_digits: str) -> str:
+    """Calcula el digito verificador modulo 11 segun algoritmo DIAN.
+
+    Los pesos se aplican de derecha a izquierda sobre los digitos base.
+    Mapeo de residuo a digito: 0→0, 1→1, 2→9, 3→8, ..., 10→1.
+    """
+    s = sum(
+        w * int(d)
+        for w, d in zip(_CHECK_WEIGHTS, reversed(base_digits))
+    ) % 11
+    return "01987654321"[s]
 
 
 def validate_nit(text: str) -> ValidationResult:
-    """Valida NITs colombianos con formato estricto NNN.NNN.NNN-D.
+    """Valida NITs colombianos con formato NNN.NNN.NNN-D o N.NNN.NNN.NNN-D.
 
     Reglas implementadas:
-    - Exactamente tres grupos de tres digitos separados por punto.
-    - Un digito verificador separado por guion al final.
-    - La cadena no puede tener caracteres extra al final.
+    - Grupos de digitos separados por punto.
+    - Digito verificador separado por guion al final.
+    - Estructura valida: [3,3,3] (9 digitos) o [1,3,3,3] (10 digitos).
+    - Digito verificador validado con algoritmo modulo 11 (DIAN).
+    - Sin caracteres extra al final.
     """
 
     automaton = TraceableAutomaton(state="START")
     digits: list[str] = []
+    digit_groups: list[int] = []
+    current_count = 0
 
     if not text:
         return reject_empty("START")
@@ -39,8 +59,9 @@ def validate_nit(text: str) -> ValidationResult:
     for symbol in text:
         if automaton.state == "START":
             if is_digit(symbol):
-                automaton.record(symbol, "N1_BLOCK1", "Primer digito del primer grupo.")
+                automaton.record(symbol, "IN_BLOCK", "Inicia el primer grupo de digitos.")
                 digits.append(symbol)
+                current_count = 1
                 continue
             automaton.record(symbol, "REJECT", "El NIT debe iniciar con un digito.")
             return build_reject(
@@ -49,132 +70,53 @@ def validate_nit(text: str) -> ValidationResult:
                 trace=automaton.trace,
             )
 
-        if automaton.state == "N1_BLOCK1":
+        if automaton.state == "IN_BLOCK":
             if is_digit(symbol):
-                automaton.record(symbol, "N2_BLOCK1", "Segundo digito del primer grupo.")
+                automaton.stay(symbol, "Continua el grupo actual de digitos.")
                 digits.append(symbol)
+                current_count += 1
                 continue
-            automaton.record(symbol, "REJECT", "Se esperaba el segundo digito del primer grupo.")
-            return build_reject(
-                consumed=automaton.consumed,
-                message="El primer grupo del NIT esta incompleto.",
-                trace=automaton.trace,
-            )
-
-        if automaton.state == "N2_BLOCK1":
-            if is_digit(symbol):
-                automaton.record(symbol, "N3_BLOCK1", "Tercer digito del primer grupo — grupo completo.")
-                digits.append(symbol)
-                continue
-            automaton.record(symbol, "REJECT", "Se esperaba el tercer digito del primer grupo.")
-            return build_reject(
-                consumed=automaton.consumed,
-                message="El primer grupo del NIT esta incompleto.",
-                trace=automaton.trace,
-            )
-
-        if automaton.state == "N3_BLOCK1":
             if symbol == ".":
-                automaton.record(symbol, "DOT1", "Primer separador entre grupos.")
+                if current_count == 0:
+                    automaton.record(symbol, "REJECT", "Bloque vacio antes del punto.")
+                    return build_reject(
+                        consumed=automaton.consumed,
+                        message="El NIT tiene un grupo vacio.",
+                        trace=automaton.trace,
+                    )
+                digit_groups.append(current_count)
+                current_count = 0
+                automaton.record(symbol, "AFTER_DOT", "Separador de grupos.")
                 continue
-            automaton.record(symbol, "REJECT", "Se esperaba '.' como separador del primer grupo.")
-            return build_reject(
-                consumed=automaton.consumed,
-                message="El NIT no tiene el primer separador correcto.",
-                trace=automaton.trace,
-            )
-
-        if automaton.state == "DOT1":
-            if is_digit(symbol):
-                automaton.record(symbol, "N1_BLOCK2", "Primer digito del segundo grupo.")
-                digits.append(symbol)
-                continue
-            automaton.record(symbol, "REJECT", "Despues del punto debe venir un digito.")
-            return build_reject(
-                consumed=automaton.consumed,
-                message="El segundo grupo del NIT esta vacio.",
-                trace=automaton.trace,
-            )
-
-        if automaton.state == "N1_BLOCK2":
-            if is_digit(symbol):
-                automaton.record(symbol, "N2_BLOCK2", "Segundo digito del segundo grupo.")
-                digits.append(symbol)
-                continue
-            automaton.record(symbol, "REJECT", "Se esperaba el segundo digito del segundo grupo.")
-            return build_reject(
-                consumed=automaton.consumed,
-                message="El segundo grupo del NIT esta incompleto.",
-                trace=automaton.trace,
-            )
-
-        if automaton.state == "N2_BLOCK2":
-            if is_digit(symbol):
-                automaton.record(symbol, "N3_BLOCK2", "Tercer digito del segundo grupo — grupo completo.")
-                digits.append(symbol)
-                continue
-            automaton.record(symbol, "REJECT", "Se esperaba el tercer digito del segundo grupo.")
-            return build_reject(
-                consumed=automaton.consumed,
-                message="El segundo grupo del NIT esta incompleto.",
-                trace=automaton.trace,
-            )
-
-        if automaton.state == "N3_BLOCK2":
-            if symbol == ".":
-                automaton.record(symbol, "DOT2", "Segundo separador entre grupos.")
-                continue
-            automaton.record(symbol, "REJECT", "Se esperaba '.' como separador del segundo grupo.")
-            return build_reject(
-                consumed=automaton.consumed,
-                message="El NIT no tiene el segundo separador correcto.",
-                trace=automaton.trace,
-            )
-
-        if automaton.state == "DOT2":
-            if is_digit(symbol):
-                automaton.record(symbol, "N1_BLOCK3", "Primer digito del tercer grupo.")
-                digits.append(symbol)
-                continue
-            automaton.record(symbol, "REJECT", "Despues del punto debe venir un digito.")
-            return build_reject(
-                consumed=automaton.consumed,
-                message="El tercer grupo del NIT esta vacio.",
-                trace=automaton.trace,
-            )
-
-        if automaton.state == "N1_BLOCK3":
-            if is_digit(symbol):
-                automaton.record(symbol, "N2_BLOCK3", "Segundo digito del tercer grupo.")
-                digits.append(symbol)
-                continue
-            automaton.record(symbol, "REJECT", "Se esperaba el segundo digito del tercer grupo.")
-            return build_reject(
-                consumed=automaton.consumed,
-                message="El tercer grupo del NIT esta incompleto.",
-                trace=automaton.trace,
-            )
-
-        if automaton.state == "N2_BLOCK3":
-            if is_digit(symbol):
-                automaton.record(symbol, "N3_BLOCK3", "Tercer digito del tercer grupo — grupo completo.")
-                digits.append(symbol)
-                continue
-            automaton.record(symbol, "REJECT", "Se esperaba el tercer digito del tercer grupo.")
-            return build_reject(
-                consumed=automaton.consumed,
-                message="El tercer grupo del NIT esta incompleto.",
-                trace=automaton.trace,
-            )
-
-        if automaton.state == "N3_BLOCK3":
             if symbol == "-":
+                if current_count == 0:
+                    automaton.record(symbol, "REJECT", "Bloque vacio antes del guion.")
+                    return build_reject(
+                        consumed=automaton.consumed,
+                        message="El NIT tiene un grupo vacio antes del digito verificador.",
+                        trace=automaton.trace,
+                    )
+                digit_groups.append(current_count)
+                current_count = 0
                 automaton.record(symbol, "HYPHEN", "Separador antes del digito verificador.")
                 continue
-            automaton.record(symbol, "REJECT", "Se esperaba '-' antes del digito verificador.")
+            automaton.record(symbol, "REJECT", "Simbolo no permitido en el NIT.")
             return build_reject(
                 consumed=automaton.consumed,
-                message="El NIT no tiene el separador del digito verificador.",
+                message="El NIT contiene simbolos invalidos.",
+                trace=automaton.trace,
+            )
+
+        if automaton.state == "AFTER_DOT":
+            if is_digit(symbol):
+                automaton.record(symbol, "IN_BLOCK", "Inicia un nuevo grupo de digitos.")
+                digits.append(symbol)
+                current_count = 1
+                continue
+            automaton.record(symbol, "REJECT", "Despues del punto debe venir un digito.")
+            return build_reject(
+                consumed=automaton.consumed,
+                message="El NIT tiene un grupo vacio despues de punto.",
                 trace=automaton.trace,
             )
 
@@ -199,19 +141,54 @@ def validate_nit(text: str) -> ValidationResult:
                 normalized="".join(digits),
             )
 
-    if automaton.state == "CHECK":
-        automaton.finish("ACCEPT", "NIT valido con formato NNN.NNN.NNN-D completo.")
-        return build_accept(
+    # ── Validacion al cierre ────────────────────────────────────────
+
+    if automaton.state != "CHECK":
+        automaton.finish("REJECT", f"La cadena termina en estado incompleto: {automaton.state}.")
+        return build_reject(
             consumed=automaton.consumed,
-            message="NIT valido.",
+            message="El NIT esta incompleto.",
             trace=automaton.trace,
             normalized="".join(digits),
         )
 
-    automaton.finish("REJECT", f"La cadena termina en estado incompleto: {automaton.state}.")
-    return build_reject(
+    # Validar estructura de bloques.
+    if digit_groups not in _VALID_STRUCTURES:
+        automaton.finish(
+            "REJECT",
+            f"Estructura de grupos invalida: {digit_groups}.",
+        )
+        return build_reject(
+            consumed=automaton.consumed,
+            message="El formato del NIT es invalido.",
+            trace=automaton.trace,
+            normalized="".join(digits),
+        )
+
+    # Validar digito verificador modulo 11.
+    base_digits = "".join(digits[:-1])
+    provided_check = digits[-1]
+    expected_check = _calc_check_digit(base_digits)
+
+    if provided_check != expected_check:
+        automaton.finish(
+            "REJECT",
+            f"Digito verificador {provided_check} no coincide con el esperado {expected_check}.",
+        )
+        return build_reject(
+            consumed=automaton.consumed,
+            message="El NIT tiene un digito verificador invalido.",
+            trace=automaton.trace,
+            normalized="".join(digits),
+        )
+
+    automaton.finish(
+        "ACCEPT",
+        f"NIT valido con {len(digits)-1} digitos y digito verificador correcto.",
+    )
+    return build_accept(
         consumed=automaton.consumed,
-        message="El NIT esta incompleto.",
+        message="NIT valido.",
         trace=automaton.trace,
         normalized="".join(digits),
     )

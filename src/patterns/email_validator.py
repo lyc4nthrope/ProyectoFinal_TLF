@@ -10,12 +10,15 @@ from src.core.result import ValidationResult, build_accept, build_reject, reject
 from src.core.symbol_classifier import is_alphanumeric, is_letter
 
 MIN_TLD_LETTERS = 2
+MAX_EMAIL_LENGTH = 254       # RFC 5321
+MAX_LOCAL_LENGTH = 64        # RFC 5321
+MAX_LABEL_LENGTH = 63        # RFC 1035
 
 
 def _is_local_separator(symbol: str) -> bool:
     """Separadores permitidos dentro de la parte local del correo."""
 
-    return symbol in {".", "_", "-"}
+    return symbol in {".", "_", "-", "+"}
 
 
 def _is_domain_separator(symbol: str) -> bool:
@@ -36,6 +39,19 @@ def _is_domain_hyphen(symbol: str) -> bool:
     return symbol == "-"
 
 
+def _handle_local_exceeded(
+    automaton: TraceableAutomaton,
+    symbol: str,
+) -> ValidationResult:
+    """Registra y retorna un rechazo por exceder MAX_LOCAL_LENGTH."""
+    automaton.record(symbol, "REJECT", "La parte local excede la longitud maxima.")
+    return build_reject(
+        consumed=automaton.consumed,
+        message="La parte local del correo es demasiado larga.",
+        trace=automaton.trace,
+    )
+
+
 def validate_email(text: str) -> ValidationResult:
     """Valida correos con un automata explicable y restricciones controladas.
 
@@ -50,21 +66,31 @@ def validate_email(text: str) -> ValidationResult:
     - La ultima etiqueta del dominio debe terminar con al menos 2 letras.
     """
 
+    if len(text) > MAX_EMAIL_LENGTH:
+        return build_reject(
+            consumed=0,
+            message=f"El correo excede la longitud maxima de {MAX_EMAIL_LENGTH} caracteres.",
+            trace=[],
+        )
+
     automaton = TraceableAutomaton(state="START")
     normalized_symbols: list[str] = []
     saw_at_symbol = False
     saw_domain_dot = False
     tld_letters = 0
+    local_length = 0
+    current_label_length = 0
 
     if not text:
         return reject_empty("START")
 
-    for index, symbol in enumerate(text):
+    for symbol in text:
         # START decide si la parte local arranca con un simbolo valido.
         if automaton.state == "START":
             if is_alphanumeric(symbol):
                 automaton.record(symbol, "LOCAL", "Empieza la parte local del correo.")
                 normalized_symbols.append(symbol)
+                local_length = 1
                 continue
 
             automaton.record(
@@ -83,6 +109,9 @@ def validate_email(text: str) -> ValidationResult:
             if is_alphanumeric(symbol):
                 automaton.stay(symbol, "Se acumula un simbolo valido en la parte local.")
                 normalized_symbols.append(symbol)
+                local_length += 1
+                if local_length > MAX_LOCAL_LENGTH:
+                    return _handle_local_exceeded(automaton, symbol)
                 continue
 
             if _is_local_separator(symbol):
@@ -124,6 +153,9 @@ def validate_email(text: str) -> ValidationResult:
                     "Despues del separador la parte local debe retomar con simbolo valido.",
                 )
                 normalized_symbols.append(symbol)
+                local_length += 1
+                if local_length > MAX_LOCAL_LENGTH:
+                    return _handle_local_exceeded(automaton, symbol)
                 continue
 
             automaton.record(
@@ -147,6 +179,7 @@ def validate_email(text: str) -> ValidationResult:
                 )
                 normalized_symbols.append(symbol)
                 tld_letters = 1 if is_letter(symbol) else 0
+                current_label_length = 1
                 continue
 
             automaton.record(
@@ -166,6 +199,14 @@ def validate_email(text: str) -> ValidationResult:
                 automaton.stay(symbol, "Se acumula un simbolo dentro de la etiqueta del dominio.")
                 normalized_symbols.append(symbol)
                 tld_letters = tld_letters + 1 if is_letter(symbol) else 0
+                current_label_length += 1
+                if current_label_length > MAX_LABEL_LENGTH:
+                    automaton.record(symbol, "REJECT", "La etiqueta del dominio excede la longitud maxima.")
+                    return build_reject(
+                        consumed=automaton.consumed,
+                        message="El dominio del correo tiene una etiqueta demasiado larga.",
+                        trace=automaton.trace,
+                    )
                 continue
 
             if _is_domain_hyphen(symbol):
@@ -187,6 +228,7 @@ def validate_email(text: str) -> ValidationResult:
                 normalized_symbols.append(symbol)
                 saw_domain_dot = True
                 tld_letters = 0
+                current_label_length = 0
                 continue
 
             automaton.record(
@@ -210,6 +252,14 @@ def validate_email(text: str) -> ValidationResult:
                 )
                 normalized_symbols.append(symbol)
                 tld_letters = 1 if is_letter(symbol) else 0
+                current_label_length += 1
+                if current_label_length > MAX_LABEL_LENGTH:
+                    automaton.record(symbol, "REJECT", "La etiqueta del dominio excede la longitud maxima.")
+                    return build_reject(
+                        consumed=automaton.consumed,
+                        message="El dominio del correo tiene una etiqueta demasiado larga.",
+                        trace=automaton.trace,
+                    )
                 continue
 
             automaton.record(
@@ -233,6 +283,7 @@ def validate_email(text: str) -> ValidationResult:
                 )
                 normalized_symbols.append(symbol)
                 tld_letters = 1 if is_letter(symbol) else 0
+                current_label_length = 1
                 continue
 
             automaton.record(

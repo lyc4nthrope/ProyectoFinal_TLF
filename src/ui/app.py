@@ -232,9 +232,6 @@ class FormSection:
         btn_frame = ttk.Frame(scrollable)
         btn_frame.pack(fill="x", pady=(8, 0))
 
-        ttk.Button(btn_frame, text="Enviar", command=self._on_submit).pack(
-            side=LEFT, padx=(0, 6)
-        )
         ttk.Button(btn_frame, text="Limpiar todo", command=self._clear).pack(side=LEFT)
 
     # ── Barra de progreso ─────────────────────────────────────────
