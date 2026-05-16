@@ -31,39 +31,38 @@ jobs:
           cache-dependency-path: pyproject.toml
 
       - name: Install PyInstaller
-        run: pip install "pyinstaller>=6"
+        run: pip install "pyinstaller>=6,<7"
 
       - name: Build executable
         run: |
           pyinstaller --onefile `
             --name tlf `
             --hidden-import src.ui.app `
-            --hidden-import src.ui.automaton_graph `
-            --hidden-import src.ui.forms `
-            --hidden-import src.ui.messages `
-            --hidden-import src.ui.widgets `
             --hidden-import src.patterns.text_scanner `
-            --hidden-import src.patterns.date_validator `
-            --hidden-import src.patterns.email_validator `
-            --hidden-import src.patterns.nit_validator `
-            --hidden-import src.patterns.password_validator `
-            --hidden-import src.patterns.phone_validator `
-            --hidden-import src.patterns.plate_validator `
-            --hidden-import src.patterns.url_validator `
             src/main.py
         shell: pwsh
+
+      - name: Verify executable exists
+        shell: pwsh
+        run: |
+          $os = "${{ matrix.os }}"
+          if ($os -match "windows") { $expected = "dist/tlf.exe" }
+          else { $expected = "dist/tlf" }
+          if (-not (Test-Path $expected)) { throw "Ejecutable no encontrado: $expected" }
+          Write-Host "Ejecutable verificado: $expected"
 
       - name: Rename artifact for OS
         shell: pwsh
         run: |
           $os = "${{ matrix.os }}"
           if ($os -match "ubuntu") {
-            Move-Item -Path "dist/tlf" -Destination "dist/tlf-linux" -ErrorAction SilentlyContinue
+            Move-Item -Path "dist/tlf" -Destination "dist/tlf-linux" -ErrorAction Stop
           } elseif ($os -match "macos") {
-            Move-Item -Path "dist/tlf" -Destination "dist/tlf-macos" -ErrorAction SilentlyContinue
+            Move-Item -Path "dist/tlf" -Destination "dist/tlf-macos" -ErrorAction Stop
           } elseif ($os -match "windows") {
-            Move-Item -Path "dist/tlf.exe" -Destination "dist/tlf-windows.exe" -ErrorAction SilentlyContinue
+            Move-Item -Path "dist/tlf.exe" -Destination "dist/tlf-windows.exe" -ErrorAction Stop
           }
+          Write-Host "Artifact renamed successfully for $os"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

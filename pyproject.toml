@@ -4,7 +4,7 @@ build-backend = "setuptools.backends._legacy:_Backend"
 
 [project]
 name = "tlf"
-version = "1.1.1"
+version = "1.2.0"
 description = "Busqueda y validacion de patrones con automatas finitos deterministas"
 readme = "README.md"
 requires-python = ">=3.10"

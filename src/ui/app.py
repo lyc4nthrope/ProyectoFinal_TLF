@@ -273,11 +273,11 @@ class FormSection:
             msg = format_field_message(config.key, result, is_empty)
 
             if is_empty:
-                results.append((key, False, msg))
+                results.append((config.key, False, msg))
             elif result is None or not result.accepted:
-                results.append((key, False, msg))
+                results.append((config.key, False, msg))
             else:
-                results.append((key, True, msg))
+                results.append((config.key, True, msg))
 
         return results
 

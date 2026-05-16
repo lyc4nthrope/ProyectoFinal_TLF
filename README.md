@@ -95,7 +95,7 @@ src/
   patterns/      -- 7 validadores AFD + scanner de texto libre
   ui/            -- Interfaz Tkinter (formularios con validación)
   main.py        -- CLI: scan, validate, ui
-tests/           -- 115 pruebas unitarias
+tests/           -- 142 pruebas unitarias
 docs/            -- Documentación formal del proyecto
 .github/
   workflows/
@@ -109,7 +109,7 @@ docs/            -- Documentación formal del proyecto
 
 ```bash
 python3 -m pytest tests/ -q
-# 115 passed
+# 142 passed
 ```
 
 Los tests se ejecutan automáticamente en **Linux, macOS y Windows**
